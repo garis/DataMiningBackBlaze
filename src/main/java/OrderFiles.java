@@ -1,25 +1,4 @@
-import org.apache.spark.SparkConf;
-import org.apache.spark.api.java.JavaPairRDD;
-import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.JavaSparkContext;
-import scala.Tuple2;
-
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Iterator;
-
-public class Main {
-
-    public static void main(String[] args) {
-        //File currentDirectory = new File(new File(".").getAbsolutePath());
-        //String temp = currentDirectory.getAbsolutePath();
-        //final String data_path = temp.substring(0, temp.length() - 2) + "/";
-        //System.out.println(data_path);
-
+/*
         final String data_path=Utils.path;
         System.out.println("Data path: "+data_path);
 
@@ -70,5 +49,4 @@ public class Main {
             }
             bw.close();
         });
-    }
-}
+*/

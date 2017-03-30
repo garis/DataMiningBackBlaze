@@ -1,21 +1,4 @@
-import org.apache.spark.SparkConf;
-import org.apache.spark.api.java.JavaPairRDD;
-import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.JavaSparkContext;
-import scala.Tuple2;
-
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.util.ArrayList;
-import java.util.Iterator;
-
-public class MakeFilesBySerialNumber {
-    public MakeFilesBySerialNumber()
-    {
-    }
-    public void compute()
-    {
+/*
         final String data_path=Utils.path;
         System.out.println("Data path: "+data_path);
 
@@ -56,7 +39,6 @@ public class MakeFilesBySerialNumber {
 
         result.foreach((Tuple2<String, ArrayList<String>> record) ->
         {
-
             String filename = data_path + "backblazeHDDstats/Out1_HardDisksFiles/" + record._1() + ".txt";
             File file = new File(filename);
             if (!file.exists()) {
@@ -73,7 +55,5 @@ public class MakeFilesBySerialNumber {
                     bw.write(value+",");
             }
             bw.close();
-
         });
-    }
-}
+*/
