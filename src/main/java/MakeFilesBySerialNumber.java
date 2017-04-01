@@ -7,7 +7,7 @@
                 .setMaster("local")
         );
 
-        JavaRDD<String> textFile = spark_context.textFile(data_path + "backblazeHDDstats/Data", 60);
+        JavaRDD<String> textFile = spark_context.textFile(data_path + "Data", 60);
 
         JavaPairRDD<String, ArrayList<String>> rows = textFile.mapToPair(riga ->
         {

@@ -32,7 +32,7 @@
 
         result.foreach((Tuple2<String, ArrayList<String[]>> record) ->
         {
-            String filename = data_path + "Out2_HardDisksFilesOrdered/" + record._1() + ".txt";
+            String filename = data_path + "Out2_HardDisksFilesOrdered/" + record._1();
             File file = new File(filename);
             if (!file.exists()) {
                 file.createNewFile();
