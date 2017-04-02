@@ -1,82 +1,94 @@
-/*
-final String data_path=Utils.path;
-        System.out.println("Data path: "+data_path);
+/*UNDER TESTING
+final String data_path = Utils.path;
+        System.out.println("Data path: " + data_path);
 
         JavaSparkContext spark_context = new JavaSparkContext(new SparkConf()
                 .setAppName("Spark Count")
                 .setMaster("local")
         );
 
-        JavaRDD<String> textFile = spark_context.textFile(data_path + "backblazeHDDstats/Out2_HardDisksFilesOrdered", 60);
+        JavaPairRDD<String,String> textFile = spark_context.wholeTextFiles(data_path + "Out2_HardDisksFilesOrdered", 1000);
 
-        JavaPairRDD<String, ArrayList<String[]>> result = textFile.mapToPair(riga ->
+        JavaPairRDD<String, String[]> rows = textFile.mapToPair(file ->
         {
-            String[] filename=riga._1().split("/");
-            String key=filename[filename.length-1];
-
-            ArrayList<String[]> valori=new ArrayList<>();
-            String[] filecontent=riga._2().split("\n");
-            for(int i=0;i<filecontent.length;i++)
+            String[] righe = file._2().split(String.format("%n"));
+            //righe.length-3 optimize search ;) (prerequisite=ordered records) I NEED TO THINK ABOUT THIS
+            for(int i=0;i<righe.length;i++)
             {
-                valori.add(filecontent[i].split(","));
-            }
-
-            Collections.sort(valori,new Comparator<String[]>() {
-                public int compare(String[] strings, String[] otherStrings) {
-                    return strings[0].compareTo(otherStrings[0]);
+                String[] valori = righe[i].split(",");
+                if(valori[3].compareTo("1")==0)
+                {
+                    //WTF MOMENT.....
+                    String[] copia=new String[valori.length];//resolve:java.lang.String cannot be cast to [Ljava.lang.String
+                    for(int j=0;j<valori.length;j++)
+                    {
+                        copia[j]=valori[j];
+                    }
+                    //END OF WTF MOMENT
+                                //the SN
+                    return new Tuple2(valori[1], copia);
                 }
-            });
-
-            return new Tuple2(key, valori);
+            }
+            String[] empty=new String[1];empty[0]="0";
+            return new Tuple2("0", empty);
         });
 
-        String filename = data_path + "backblazeHDDstats/failureStat.csv";
-        File file = new File(filename);
-        if (!file.exists()) {
-            try {
+        //for debug purpouses
+        //rows.foreach((Tuple2<String,String[]> disco)->
+        //{
+        //  System.out.println(disco._1());
+        //  for(int i=0;i<disco._2().length;i++)
+        //  {
+        //      System.out.print(disco._2()[i]);
+        //  }
+        //  System.out.println("\n");
+        //});
+
+        String filename = data_path + "failureStat.csv";
+                File file = new File(filename);
+                if (!file.exists()) {
+                try {
                 file.createNewFile();
-            } catch (IOException e) {
+                } catch (IOException e) {
                 e.printStackTrace();
-            }
-        }
-        FileWriter fw = null; // creating fileWriter object with the file
+                }
+                }
+                FileWriter fw = null; // creating fileWriter object with the file
+                try {
+                fw = new FileWriter(file.getAbsoluteFile(), false);
+                } catch (IOException e) {
+                e.printStackTrace();
+                }
+                BufferedWriter bw = new BufferedWriter(fw); // creating bufferWriter which is used to write the content into the file
+                String value = "";
+
+                int anno = 2016;
+                for (int mese = 1; mese < 13; mese++) {
+        for (int giorno = 1; giorno < 32; giorno++) {
+final String data = anno + "-" +String.format("%02d", mese) + "-" + String.format("%02d", giorno);
+        java.util.Map<String,Long> number = rows.filter((Tuple2<String, String[]> riga) ->
+        {
+        if (riga._2()[0].compareTo(data) == 0)
+        return true;
+        return false;
+        }).countByKey();
+
+        String line = data + ","+number.size()+"," +String.format("%n", "");
         try {
-            fw = new FileWriter(file.getAbsoluteFile(),false);
+        bw.write(line);
         } catch (IOException e) {
-            e.printStackTrace();
-        }
-        BufferedWriter bw = new BufferedWriter(fw); // creating bufferWriter which is used to write the content into the file
-        String value = "";
-
-        int anno=2016;
-        for (int mese=0;mese<13;mese++){
-            for (int giorno=0;giorno<13;giorno++)
-            {
-                final String data=anno+"-"+System.out.format("%02d",mese)+"-"+System.out.format("%02d",giorno);
-                long number=rows.filter((Tuple2<String,ArrayList<String>> riga)->
-                {
-                    if((riga._2().get(4).compareTo("1")==0) &&(riga._2().get(0).compareTo(data)==0))
-                        return true;
-                    return false;
-                }).count();
-
-                String line=data+","+number;
-                System.out.println(line);
-                try {
-                    bw.write(line);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                try {
-                    bw.flush();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
+        e.printStackTrace();
         }
         try {
-            bw.close();
+        bw.flush();
         } catch (IOException e) {
-            e.printStackTrace();
+        e.printStackTrace();
+        }
+        }
+        }
+        try {
+        bw.close();
+        } catch (IOException e) {
+        e.printStackTrace();
         }
  */
