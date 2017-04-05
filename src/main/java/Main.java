@@ -26,45 +26,40 @@ public class Main {
 
         JavaPairRDD<String, String> textFile = spark_context.wholeTextFiles(data_path + "Data", 1000);
 
-        JavaPairRDD<String, Integer> rows = textFile.mapToPair(file ->
+        JavaPairRDD<String, long[]> rows = textFile.mapToPair(file ->
         {
             String[] righe = file._2().split(String.format("%n"));
-            int contatore = 0;
-            String data = "";
-            //start from the second line
+            long[] contatoreValori=new long[righe[0].split(",").length];
+
+            for (int i = 0; i < contatoreValori.length; i++) {
+                contatoreValori[i]=0;
+            }
+
             for (int i = 1; i < righe.length; i++) {
                 String[] valori = righe[i].split(",");
-
-                data = valori[0];
-                if (valori[4].compareTo("1") == 0) {
-                    contatore++;
+                for (int j = 0; j < valori.length; j++) {
+                    if(valori[j].compareTo("")!=0){
+                        contatoreValori[j]++;
+                    }
                 }
             }
-            return new Tuple2(data, contatore);
+            return new Tuple2("A",contatoreValori );
         });
 
-        java.util.Map<String, Integer> result = rows.collectAsMap();
-
-        String filename = data_path + "failureStat.csv";
-        File file = new File(filename);
-        if (!file.exists()) {
-            try {
-                file.createNewFile();
-            } catch (IOException e) {
-                e.printStackTrace();
+        JavaPairRDD<String, long[]> result = rows.reduceByKey((long[] vettoreA, long[] vettoreB) ->
+        {
+            for(int h=0;h<vettoreB.length;h++ ) {
+                vettoreA[h]=vettoreA[h]+vettoreB[h];
             }
-        }
-        FileWriter fw = null;
-        fw = new FileWriter(file.getAbsoluteFile(), false);
-        BufferedWriter bw = new BufferedWriter(fw);
+            return vettoreA;
+        });
 
-        result.forEach((String key, Integer value) -> {
-            try {
-                bw.write(key + "," + value + String.format("%n"));
-            } catch (IOException e) {
-                e.printStackTrace();
+        result.foreach((Tuple2<String, long[]> bla)->
+        {
+            System.out.println("CHIAVE "+bla._1());
+            for(int i=0;i<bla._2().length;i++) {
+                System.out.println("COLONNA "+i+" ha "+bla._2()[i]+" valori");
             }
         });
-        bw.close();
     }
 }
