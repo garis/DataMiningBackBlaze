@@ -2,6 +2,7 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.hadoop.conf.Configuration;
 import scala.Tuple2;
 
 import java.io.BufferedWriter;
@@ -13,6 +14,41 @@ import java.util.*;
 public class Main {
 
     public static void main(String[] args) throws IOException {
+        /*0  24471617
+        1  24471617
+        2  24471617
+        3  24471617
+        4  24471617
+        94  24471617
+        5  24471593
+        6  24471593
+        9  24471593
+        10  24471593
+        11  24471593
+        12  24471593
+        13  24471593
+        14  24471593
+        15  24471593
+        16  24471593
+        19  24471593
+        20  24471593
+        21  24471593
+        22  24471593
+        25  24471593
+        26  24471593
+        57  24471593
+        58  24471593
+        59  24471593
+        60  24471593
+        61  24471593
+        62  24471593
+        51  24471342
+        52  24471342
+        47  24428958
+        48  24428958*/
+        final int[] colonneValide = new int[]{0, 1, 2, 3, 4, 94, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 19, 20,
+                21, 22, 25, 26, 57, 58, 59, 60, 61, 62, 51, 52, 47, 48};
+
         final String data_path = Utils.path;
         System.out.println("Data path: " + data_path);
 
@@ -23,49 +59,36 @@ public class Main {
 
         JavaPairRDD<String, String> textFile = spark_context.wholeTextFiles(data_path + "Data", 1000);
 
-        JavaPairRDD<String, long[]> rows = textFile.mapToPair(file ->
+        JavaPairRDD<String, String> rows = textFile.mapToPair(file ->
         {
-            String[] righe = file._2().split(String.format("%n"));
-            long[] contatoreValori = new long[righe[0].split(",").length];
+            String[] filename = file._1().split("/");
 
-            for (int i = 0; i < contatoreValori.length; i++) {
-                contatoreValori[i] = 0;
+            String fullFilename = data_path + "filteredColumns/" + filename[filename.length - 1];
+            File fileFiltered = new File(fullFilename);
+            if (!fileFiltered.exists()) {
+                fileFiltered.createNewFile();
             }
+            FileWriter fw = new FileWriter(fileFiltered.getAbsoluteFile(), false);
+            BufferedWriter bw = new BufferedWriter(fw);
 
-            for (int i = 1; i < righe.length; i++) {
+            String[] righe = file._2().split(String.format("\n"));
+            for (int i = 0; i < righe.length; i++) {
                 String[] valori = righe[i].split(",");
-                for (int j = 0; j < valori.length; j++) {
-                    if (valori[j].compareTo("") != 0) {
-                        contatoreValori[j]++;
-                    }
+
+                //clean the last two character to fix a strange behaviour with new "line type of operations"
+                //Gaspa remembers the mysterious "^M" on vim, unknow to Java (and to himself also).
+                valori[valori.length-1]="";
+                valori[valori.length-2]="";
+                for (int j = 0; j < colonneValide.length; j++) {
+                    //scrive solo le colonne con indice contenuto in "colonneValide"
+                    bw.write(valori[colonneValide[j]] + ",");
                 }
+                bw.write(String.format("%n"));
             }
-            return new Tuple2("A", contatoreValori);
+            bw.close();
+            return new Tuple2(file._1(), "DONE!");
         });
 
-        JavaPairRDD<String, long[]> rddMapReduce = rows.reduceByKey((long[] vettoreA, long[] vettoreB) ->
-        {
-            for (int h = 0; h < vettoreB.length; h++) {
-                vettoreA[h] = vettoreA[h] + vettoreB[h];
-            }
-            return vettoreA;
-        });
-        //List<Tuple2<String, long[]>> fromMapReduceCollect=rddMapReduce.collect();
-        Tuple2<String, long[]> colonneValuesCount = rddMapReduce.collect().get(0);
-
-        ArrayList<Tuple2<String, Long>> output = new ArrayList<Tuple2<String, Long>>();
-        for (int i = 0; i < colonneValuesCount._2().length; i++) {
-            output.add(new Tuple2("" + i, colonneValuesCount._2()[i]));
-        }
-
-        Collections.sort(output, new Comparator<Tuple2<String, Long>>() {
-            public int compare(Tuple2<String, Long> value, Tuple2<String, Long> otherValue) {
-                return -(value._2().compareTo(otherValue._2()));//the minus is for descending order (max to min)
-            }
-        });
-
-        for (Tuple2<String, Long> elemento : output) {
-            System.out.println(elemento._1() + "  " + elemento._2());
-        }
+        rows.foreach((Tuple2<String, String> tupla) -> System.out.println(tupla._1() + " " + tupla._2()));
     }
 }

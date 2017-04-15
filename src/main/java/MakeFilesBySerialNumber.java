@@ -41,7 +41,7 @@ crea un file per ogni numero seriale
 
         result.foreach((Tuple2<String, ArrayList<String>> record) ->
         {
-            String filename = data_path + "backblazeHDDstats/Out1_HardDisksFiles/" + record._1() + ".txt";
+            String filename = data_path + "Out1_HardDisksFiles/" + record._1() + ".txt";
             File file = new File(filename);
             if (!file.exists()) {
                 file.createNewFile();
