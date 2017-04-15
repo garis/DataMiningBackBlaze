@@ -1,4 +1,6 @@
 /*
+dopo aver ottenuto un file per ogni numero seriale mette in ordine i record per data
+
         final String data_path=Utils.path;
         System.out.println("Data path: "+data_path);
 

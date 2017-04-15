@@ -1,4 +1,5 @@
 /*
+conta quanti valori ==1 ci sono nella colonna dei fallimenti
 final String data_path = Utils.path;
         System.out.println("Data path: " + data_path);
 

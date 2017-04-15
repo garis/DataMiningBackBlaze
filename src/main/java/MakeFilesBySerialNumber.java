@@ -1,4 +1,6 @@
 /*
+crea un file per ogni numero seriale
+
         final String data_path=Utils.path;
         System.out.println("Data path: "+data_path);
 
