@@ -1,6 +1,22 @@
 /*
 crea un file per ogni numero seriale
 
+import org.apache.spark.SparkConf;
+import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaSparkContext;
+import scala.Tuple2;
+
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Iterator;
+
+public class Main {
+
+    public static void main(String[] args) throws IOException {
         final String data_path=Utils.path;
         System.out.println("Data path: "+data_path);
 
@@ -9,7 +25,15 @@ crea un file per ogni numero seriale
                 .setMaster("local")
         );
 
-        JavaRDD<String> textFile = spark_context.textFile(data_path + "Data", 60);
+        //fix filesystem errors when using java .jar execution
+        spark_context.hadoopConfiguration().set("fs.hdfs.impl",
+                org.apache.hadoop.hdfs.DistributedFileSystem.class.getName()
+        );
+        spark_context.hadoopConfiguration().set("fs.file.impl",
+                org.apache.hadoop.fs.LocalFileSystem.class.getName()
+        );
+
+        JavaRDD<String> textFile = spark_context.textFile(data_path + "filteredColumns/", 400);
 
         JavaPairRDD<String, ArrayList<String>> rows = textFile.mapToPair(riga ->
         {
@@ -58,4 +82,6 @@ crea un file per ogni numero seriale
             }
             bw.close();
         });
+    }
+}
 */

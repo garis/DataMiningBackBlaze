@@ -6,7 +6,7 @@
 
     <groupId>uni.progetto</groupId>
     <artifactId>data-mining</artifactId>
-    <version>0.01</version>
+    <version>0.02</version>
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>

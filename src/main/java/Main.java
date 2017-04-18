@@ -1,94 +1,86 @@
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
-import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.hadoop.conf.Configuration;
 import scala.Tuple2;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 
 public class Main {
 
     public static void main(String[] args) throws IOException {
-        /*0  24471617
-        1  24471617
-        2  24471617
-        3  24471617
-        4  24471617
-        94  24471617
-        5  24471593
-        6  24471593
-        9  24471593
-        10  24471593
-        11  24471593
-        12  24471593
-        13  24471593
-        14  24471593
-        15  24471593
-        16  24471593
-        19  24471593
-        20  24471593
-        21  24471593
-        22  24471593
-        25  24471593
-        26  24471593
-        57  24471593
-        58  24471593
-        59  24471593
-        60  24471593
-        61  24471593
-        62  24471593
-        51  24471342
-        52  24471342
-        47  24428958
-        48  24428958*/
-        final int[] colonneValide = new int[]{0, 1, 2, 3, 4, 94, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 19, 20,
-                21, 22, 25, 26, 57, 58, 59, 60, 61, 62, 51, 52, 47, 48};
-
         final String data_path = Utils.path;
+        final int columnTemperature = 29;
+
         System.out.println("Data path: " + data_path);
 
         JavaSparkContext spark_context = new JavaSparkContext(new SparkConf()
                 .setAppName("Spark Count")
                 .setMaster("local")
+                //uffa
+                .set("spark.executor.memory", "2g")
         );
 
-        JavaPairRDD<String, String> textFile = spark_context.wholeTextFiles(data_path + "Data", 1000);
+        //fix filesystem errors when using java .jar execution
+        spark_context.hadoopConfiguration().set("fs.hdfs.impl",
+                org.apache.hadoop.hdfs.DistributedFileSystem.class.getName()
+        );
+        spark_context.hadoopConfiguration().set("fs.file.impl",
+                org.apache.hadoop.fs.LocalFileSystem.class.getName()
+        );
 
-        JavaPairRDD<String, String> rows = textFile.mapToPair(file ->
+        JavaPairRDD<String, String> textFile = spark_context.wholeTextFiles(data_path + "filteredColumns/", 10000);
+
+        JavaPairRDD<String, ArrayList<Double>> temperature = textFile.mapToPair(fileDisco ->
         {
-            String[] filename = file._1().split("/");
+            String[] tempKey = fileDisco._1().split("/");
+            tempKey[0] = tempKey[tempKey.length - 1];//reuse the value at 0 as name
 
-            String fullFilename = data_path + "filteredColumns/" + filename[filename.length - 1];
-            File fileFiltered = new File(fullFilename);
-            if (!fileFiltered.exists()) {
-                fileFiltered.createNewFile();
-            }
-            FileWriter fw = new FileWriter(fileFiltered.getAbsoluteFile(), false);
-            BufferedWriter bw = new BufferedWriter(fw);
-
-            String[] righe = file._2().split(String.format("\n"));
-            for (int i = 0; i < righe.length; i++) {
-                String[] valori = righe[i].split(",");
-
-                //clean the last two character to fix a strange behaviour with new "line type of operations"
-                //Gaspa remembers the mysterious "^M" on vim, unknow to Java (and to himself also).
-                valori[valori.length-1]="";
-                valori[valori.length-2]="";
-                for (int j = 0; j < colonneValide.length; j++) {
-                    //scrive solo le colonne con indice contenuto in "colonneValide"
-                    bw.write(valori[colonneValide[j]] + ",");
+            ArrayList<Double> dischi = new ArrayList<Double>();
+            for (String giorno : fileDisco._2().split(String.format("%n"))) {
+                if (!giorno.contains("date")) {
+                    try {
+                        dischi.add(Double.parseDouble(giorno.split(",")[columnTemperature]));
+                    } catch (Exception ex) {//sometimes the temperature is missing :(
+                        dischi.add(25D);
+                    }
                 }
-                bw.write(String.format("%n"));
             }
-            bw.close();
-            return new Tuple2(file._1(), "DONE!");
+            return new Tuple2(tempKey[0], dischi);
         });
 
-        rows.foreach((Tuple2<String, String> tupla) -> System.out.println(tupla._1() + " " + tupla._2()));
+        temperature.cache();
+        JavaPairRDD<String, ArrayList<Double>> result = temperature.mapToPair((Tuple2<String, ArrayList<Double>> temperatureGiornata) ->
+        {
+            double mean = 0;
+            double sum = 0;
+            for (Double temperatura : temperatureGiornata._2())
+                sum = sum + temperatura.intValue();
+
+            mean = sum / (double) temperatureGiornata._2().size();
+
+            double DevSTD = 0;
+            for (Double temperatura : temperatureGiornata._2())
+                DevSTD = Math.pow(temperatura.doubleValue() - mean, 2);
+
+            DevSTD = DevSTD / (double) temperatureGiornata._2().size();
+            DevSTD = Math.sqrt(DevSTD);
+
+            ArrayList<Double> valori = new ArrayList<>();
+            valori.add(mean);
+            valori.add(DevSTD);
+            return new Tuple2<String, ArrayList<Double>>(temperatureGiornata._1(), valori);
+        });
+
+        JavaPairRDD<String, String> output = result.mapToPair((Tuple2<String, ArrayList<Double>> valori) ->
+                new Tuple2<String, String>("0", valori._1() +
+                        "," + valori._2().get(0).doubleValue() +
+                        "," + valori._2().get(1).doubleValue())
+        );
+
+        output.reduceByKey((String StrA, String StrB) -> {
+            return StrA + String.format("%n") + StrB;
+                }
+        ).foreach((Tuple2<String, String> allInOne) -> System.out.print(allInOne._2()));
     }
 }
