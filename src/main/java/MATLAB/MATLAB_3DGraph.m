@@ -4,10 +4,14 @@ POINT_SIZE=1;
 AXIS_LIMIT=50;
 set(0,'DefaultFigureRenderer','opengl')
 
+
 C=failure;
-X=ReadChannelMargin;
+
+VecZero=zeros([size(C,1),1]);
+
+X=Load_UnloadCycleCount;
 Y=UncorrectableSectorCount;
-Z=Load_UnloadCycleCount;
+Z=ReadChannelMargin;
 %ReadChannelMargin
 %UncorrectableSectorCount
 %Load_UnloadCycleCount
