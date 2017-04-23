@@ -228,9 +228,9 @@ public class Main {
 
         FileWriter fw = new FileWriter(fileOutput.getAbsoluteFile(), false); // creating fileWriter object with the file
         BufferedWriter bw = new BufferedWriter(fw); // creating bufferWriter which is used to write the content into the file
-        
+
         bw.write("C" + ","+"X" + ","+"Y" + ","+"Z");
-        
+
         for (Tuple2<String, ArrayList<String>> record : healthyCollect) {
             bw.write(record._1() + ",");
             for (String valore : record._2()) {

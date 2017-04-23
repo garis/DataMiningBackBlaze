@@ -1,6 +1,4 @@
-/*
 crea un file per ogni numero seriale
-
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -33,7 +31,7 @@ public class Main {
                 org.apache.hadoop.fs.LocalFileSystem.class.getName()
         );
 
-        JavaRDD<String> textFile = spark_context.textFile(data_path + "filteredColumns/", 400);
+        JavaRDD<String> textFile = spark_context.textFile(data_path + "filteredColumns/", 15000);
 
         JavaPairRDD<String, ArrayList<String>> rows = textFile.mapToPair(riga ->
         {
@@ -84,4 +82,3 @@ public class Main {
         });
     }
 }
-*/

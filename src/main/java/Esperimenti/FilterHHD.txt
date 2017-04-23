@@ -1,4 +1,3 @@
-/*
 genera:
 HDDclassification ----->failed      (1431 files)
                     |
@@ -29,8 +28,6 @@ public class Main {
         JavaSparkContext spark_context = new JavaSparkContext(new SparkConf()
                 .setAppName("Spark Count")
                 .setMaster("local")
-                //uffa
-                .set("spark.executor.memory","2g")
         );
 
         //fix filesystem errors when using java .jar execution
@@ -91,4 +88,3 @@ public class Main {
         });
     }
 }
-*/

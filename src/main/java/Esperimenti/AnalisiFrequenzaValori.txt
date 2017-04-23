@@ -1,0 +1,216 @@
+import org.apache.spark.SparkConf;
+import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaSparkContext;
+import scala.Tuple2;
+
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.*;
+
+public class Main {
+
+    public static void main(String[] args) throws IOException {
+        final String data_path = Utils.path;
+
+        System.out.println("Data path: " + data_path);
+
+        JavaSparkContext spark_context = new JavaSparkContext(new SparkConf()
+                .setAppName("Spark Count")
+                .setMaster("local")
+        );
+
+        //fix filesystem errors when using java .jar execution
+        spark_context.hadoopConfiguration().set("fs.hdfs.impl",
+                org.apache.hadoop.hdfs.DistributedFileSystem.class.getName()
+        );
+        spark_context.hadoopConfiguration().set("fs.file.impl",
+                org.apache.hadoop.fs.LocalFileSystem.class.getName()
+        );
+
+
+        final int[] colonneUtili = new int[]{4, 5, 6};
+
+        JavaPairRDD<String, String> textFileFailed = spark_context.wholeTextFiles(data_path + "HDDclassification/failed/", 10000);
+
+        JavaPairRDD<String, ArrayList<String>> failed = textFileFailed.mapToPair(riga ->
+        {
+            String[] valori = riga._2().split(String.format("%n"));
+            ArrayList<String> lista = new ArrayList<>();
+            String[] giorno = valori[valori.length - 1].split(",");//"-2" because the last line is an empty line
+            String key = "1";
+            //if error==>values not present==>default value 0
+            try {
+                for (int i = 0; i < colonneUtili.length; i++)
+                    lista.add(giorno[colonneUtili[i]]);
+
+            } catch (Exception ex) {
+                key = "-1";
+                lista = new ArrayList<>();
+                for (int i = 0; i < colonneUtili.length; i++)
+                    lista.add("0");
+            }
+            return new Tuple2(key, lista);
+        });
+
+        JavaRDD<String> textFileLastDay = spark_context.textFile(data_path + "AnalisiFrequenzaValori/lastDay.csv", 10000);
+
+        JavaPairRDD<String, ArrayList<String>> healthy = textFileLastDay.mapToPair(riga ->
+        {
+            String key = "0";
+            String[] valori = riga.split(",");
+            ArrayList<String> lista = new ArrayList<>();
+            if (riga.contains("serial_number")) {
+                key = "-1";
+                lista.add("0");
+                lista.add("0");
+                lista.add("0");
+            } else {
+                for (int i = 0; i < colonneUtili.length; i++)
+                    lista.add(valori[coimport org.apache.spark.SparkConf;
+import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaSparkContext;
+import scala.Tuple2;
+
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.*;
+
+public class Main {
+
+    public static void main(String[] args) throws IOException {
+        final String data_path = Utils.path;
+
+        System.out.println("Data path: " + data_path);
+
+        JavaSparkContext spark_context = new JavaSparkContext(new SparkConf()
+                .setAppName("Spark Count")
+                .setMaster("local")
+        );
+
+        //fix filesystem errors when using java .jar execution
+        spark_context.hadoopConfiguration().set("fs.hdfs.impl",
+                org.apache.hadoop.hdfs.DistributedFileSystem.class.getName()
+        );
+        spark_context.hadoopConfiguration().set("fs.file.impl",
+                org.apache.hadoop.fs.LocalFileSystem.class.getName()
+        );
+
+
+        final int[] colonneUtili = new int[]{4, 5, 6};
+
+        JavaPairRDD<String, String> textFileFailed = spark_context.wholeTextFiles(data_path + "HDDclassification/failed/", 10000);
+
+        JavaPairRDD<String, ArrayList<String>> failed = textFileFailed.mapToPair(riga ->
+        {
+            String[] valori = riga._2().split(String.format("%n"));
+            ArrayList<String> lista = new ArrayList<>();
+            String[] giorno = valori[valori.length - 1].split(",");//"-2" because the last line is an empty line
+            String key = "1";
+            //if error==>values not present==>default value 0
+            try {
+                for (int i = 0; i < colonneUtili.length; i++)
+                    lista.add(giorno[colonneUtili[i]]);
+
+            } catch (Exception ex) {
+                key = "-1";
+                lista = new ArrayList<>();
+                for (int i = 0; i < colonneUtili.length; i++)
+                    lista.add("0");
+            }
+            return new Tuple2(key, lista);
+        });
+
+        JavaRDD<String> textFileLastDay = spark_context.textFile(data_path + "AnalisiFrequenzaValori/lastDay.csv", 10000);
+
+        JavaPairRDD<String, ArrayList<String>> healthy = textFileLastDay.mapToPair(riga ->
+        {
+            String key = "0";
+            String[] valori = riga.split(",");
+            ArrayList<String> lista = new ArrayList<>();
+            if (riga.contains("serial_number")) {
+                key = "-1";
+                lista.add("0");
+                lista.add("0");
+                lista.add("0");
+            } else {
+                for (int i = 0; i < colonneUtili.length; i++)
+                    lista.add(valori[colonneUtili[i]]);
+            }
+            return new Tuple2(key, lista);
+        });
+
+
+        List<Tuple2<String, ArrayList<String>>> failedCollect = failed.collect();
+        List<Tuple2<String, ArrayList<String>>> healthyCollect = healthy.collect();
+
+        String filename = data_path + "forDraw.csv";
+        File fileOutput = new File(filename);
+        if (!fileOutput.exists()) {
+            fileOutput.createNewFile();
+        }
+        
+        
+
+        FileWriter fw = new FileWriter(fileOutput.getAbsoluteFile(), false); // creating fileWriter object with the file
+        BufferedWriter bw = new BufferedWriter(fw); // creating bufferWriter which is used to write the content into the file
+        
+        bw.write("C" + ","+"X" + ","+"Y" + ","+"Z");
+        
+        for (Tuple2<String, ArrayList<String>> record : healthyCollect) {
+            bw.write(record._1() + ",");
+            for (String valore : record._2()) {
+                bw.write(valore + ",");
+            }
+            bw.write(String.format("%n"));
+        }
+
+        for (Tuple2<String, ArrayList<String>> record : failedCollect) {
+            bw.write(record._1() + ",");
+            for (String valore : record._2()) {
+                bw.write(valore + ",");
+            }
+            bw.write(String.format("%n"));
+        }
+        bw.close();
+    }
+}lonneUtili[i]]);
+            }
+            return new Tuple2(key, lista);
+        });
+
+
+        List<Tuple2<String, ArrayList<String>>> failedCollect = failed.collect();
+        List<Tuple2<String, ArrayList<String>>> healthyCollect = healthy.collect();
+
+        String filename = data_path + "forDraw.csv";
+        File fileOutput = new File(filename);
+        if (!fileOutput.exists()) {
+            fileOutput.createNewFile();
+        }
+
+        FileWriter fw = new FileWriter(fileOutput.getAbsoluteFile(), false); // creating fileWriter object with the file
+        BufferedWriter bw = new BufferedWriter(fw); // creating bufferWriter which is used to write the content into the file
+        for (Tuple2<String, ArrayList<String>> record : healthyCollect) {
+            bw.write(record._1() + ",");
+            for (String valore : record._2()) {
+                bw.write(valore + ",");
+            }
+            bw.write(String.format("%n"));
+        }
+
+        for (Tuple2<String, ArrayList<String>> record : failedCollect) {
+            bw.write(record._1() + ",");
+            for (String valore : record._2()) {
+                bw.write(valore + ",");
+            }
+            bw.write(String.format("%n"));
+        }
+        bw.close();
+    }
+}

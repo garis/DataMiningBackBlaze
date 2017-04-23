@@ -1,5 +1,5 @@
-/*
 dopo aver ottenuto un file per ogni numero seriale mette in ordine i record per data
+
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -77,4 +77,3 @@ public class Main {
         });
     }
 }
-*/
