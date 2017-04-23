@@ -42,10 +42,6 @@ public class Main {
 
         */
 
-        String[] v=("2016-01-01,WD-WCC4MKDL77ZK,WDC WD20EFRX,2000398934016,1,200,0,,,100,0,100,4,200,0,100,0,,,88,8807," +
-                "100,0,100,0,100,4,,,,,,,,,,,,,,,,,,,,,200,2,200,571,120,27,,,200,0,200,0,100,0,200,0,100,0,,,,,,,,,,,,,," +
-                ",,,,,,,,,,,,,,,,\n").split(",");
-
         final int[] colonneValide = new int[]{4, 14, 50, 58, 60};
 
         JavaRDD<String> textFileLastDay = spark_context.textFile(data_path + "AnalisiFrequenzaValori/lastDay.csv", 10000);
@@ -57,7 +53,11 @@ public class Main {
             ArrayList<String> lista = new ArrayList<>();
             if (valori[4].compareTo("0") == 0) {
                 for (int i = 0; i < colonneValide.length; i++)
-                    lista.add(valori[colonneValide[i]]);
+                    if (valori[colonneValide[i]].compareTo("") == 0)
+                        lista.add("0");
+                    else
+                        lista.add(valori[colonneValide[i]]);
+
             } else {
                 key = "-1";
                 for (int i = 0; i < colonneValide.length; i++)
@@ -76,11 +76,11 @@ public class Main {
                 String[] valori = disco.split(",");
                 if (valori[4].compareTo("1") == 0) {
                     ArrayList<String> recordDisco = new ArrayList<>();
-
                     for (int i = 0; i < colonneValide.length; i++) {
                         if (valori[colonneValide[i]].compareTo("") == 0)
                             recordDisco.add("0");
-                        recordDisco.add(valori[colonneValide[i]]);
+                        else
+                            recordDisco.add(valori[colonneValide[i]]);
                     }
                     lista.add(new Tuple2("1", recordDisco));
                 }
@@ -100,7 +100,7 @@ public class Main {
         List<Tuple2<String, ArrayList<String>>> failedCollected = failed.collect();
         List<Tuple2<String, ArrayList<String>>> healthyCollected = healthy.collect();
 
-        String filename = data_path + "forDraw.csv";
+        String filename = data_path + "forMATLAB.csv";
         File fileOutput = new File(filename);
         if (!fileOutput.exists()) {
             fileOutput.createNewFile();
@@ -109,10 +109,10 @@ public class Main {
         FileWriter fw = new FileWriter(fileOutput.getAbsoluteFile(), false); // creating fileWriter object with the file
         BufferedWriter bw = new BufferedWriter(fw); // creating bufferWriter which is used to write the content into the file
 
-        String[] COLONNE=new String[]{"failure","Read Channel Margin",
+        String[] COLONNE = new String[]{"failure", "Read Channel Margin",
                 "Current Pending Sector Count", "Uncorrectable Sector Count",
                 "Load_Unload Cycle Count"};
-        for(String nome:COLONNE)
+        for (String nome : COLONNE)
             bw.write(nome + ",");
         bw.write(String.format("%n"));
 
@@ -129,6 +129,51 @@ public class Main {
             }
             bw.write(String.format("%n"));
         }
+        bw.close();
+
+        filename = data_path + "forMATLABFailed.csv";
+        fileOutput = new File(filename);
+        if (!fileOutput.exists()) {
+            fileOutput.createNewFile();
+        }
+
+        fw = new FileWriter(fileOutput.getAbsoluteFile(), false);
+        bw = new BufferedWriter(fw);
+
+        for (String nome : COLONNE)
+            bw.write(nome + ",");
+        bw.write(String.format("%n"));
+
+        for (Tuple2<String, ArrayList<String>> record : failedCollected) {
+            for (String valore : record._2()) {
+                bw.write(valore + ",");
+            }
+            bw.write(String.format("%n"));
+        }
+
+        bw.close();
+
+        filename = data_path + "forMATLABHealthy.csv";
+        fileOutput = new File(filename);
+        if (!fileOutput.exists()) {
+            fileOutput.createNewFile();
+        }
+
+        fw = new FileWriter(fileOutput.getAbsoluteFile(), false);
+        bw = new BufferedWriter(fw);
+
+        for (String nome : COLONNE)
+            bw.write(nome + ",");
+        bw.write(String.format("%n"));
+
+        for (Tuple2<String, ArrayList<String>> record : healthyCollected) {
+            for (String valore : record._2()) {
+                bw.write(valore + ",");
+            }
+            bw.write(String.format("%n"));
+        }
+        bw.close();
+
         bw.close();
     }
 }
