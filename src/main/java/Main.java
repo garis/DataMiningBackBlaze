@@ -36,9 +36,10 @@ public class Main {
         /*frequent columns
         4,failure,24471617
         14,smart_5_raw,24471593         Read Channel Margin
+        50,smart_193_raw,24157811       Load/Unload Cycle Count
         58,smart_197_raw,24471593       Current Pending Sector Count
         60,smart_198_raw,24471593       Uncorrectable Sector Count
-        50,smart_193_raw,24157811       Load/Unload Cycle Count
+
         */
 
         String[] v=("2016-01-01,WD-WCC4MKDL77ZK,WDC WD20EFRX,2000398934016,1,200,0,,,100,0,100,4,200,0,100,0,,,88,8807," +
@@ -113,9 +114,9 @@ public class Main {
                 "Load_Unload Cycle Count"};
         for(String nome:COLONNE)
             bw.write(nome + ",");
+        bw.write(String.format("%n"));
 
         for (Tuple2<String, ArrayList<String>> record : failedCollected) {
-            bw.write(record._1() + ",");
             for (String valore : record._2()) {
                 bw.write(valore + ",");
             }
@@ -123,129 +124,11 @@ public class Main {
         }
 
         for (Tuple2<String, ArrayList<String>> record : healthyCollected) {
-            bw.write(record._1() + ",");
             for (String valore : record._2()) {
                 bw.write(valore + ",");
             }
             bw.write(String.format("%n"));
         }
         bw.close();
-
-        /*JavaPairRDD<String,ArrayList<String>> failed=textFile.flatMapToPair(new PairFlatMapFunction<Tuple2<String, ArrayList<String>>>(){
-            public Iterable<Tuple2<String, ArrayList<String>>> call(ArrayList<String> list) {
-                List<Tuple2<String, ArrayList<String>>> result = new ArrayList<>();
-                result.add(new Tuple2<String, ArrayList<String>>("1", list));
-                return result;
-            }
-            });*/
-       /* JavaPairRDD<String, ArrayList<Tuple2<String, ArrayList<String>>>> failedGroupByDay = textFile.mapToPair(file ->
-        {
-            String[] dischi = file._2().split(String.format("\n"));
-            ArrayList<Tuple2<String, ArrayList<String>>> lista = new ArrayList<>();
-            for (String disco : dischi) {
-                String[] valori = disco.split(",");
-                if (valori[4].compareTo("1") == 0) {
-                    ArrayList<String> recordDisco = new ArrayList<>();
-
-                    for (int i = 0; i < colonneValide.length; i++)
-                        recordDisco.add(valori[colonneValide[i]]);
-
-                    lista.add(new Tuple2("1", recordDisco));
-                }
-            }
-            return new Tuple2(1, lista);
-        });*/
-
-        /*
-        JavaPairRDD<String, ArrayList<String>> failed = failedGroupByDay.flatMapToPair((Tuple2<String, ArrayList<String>> day) ->
-        {
-            ArrayList<String> tempList=day._2();
-            return new Tuple2(day._1(),tempList);
-        });
-*/
-/*
-        JavaPairRDD<String, String> textFile = spark_context.wholeTextFiles(data_path + "Data", 1000);
-
-        JavaPairRDD<String, String> rows = textFile.mapToPair(file ->
-        {
-            String[] filename = file._1().split("/");
-
-            String fullFilename = data_path + "filteredColumns/" + filename[filename.length - 1];
-            File fileFiltered = new File(fullFilename);
-            if (!fileFiltered.exists()) {
-                fileFiltered.createNewFile();
-            }
-            FileWriter fw = new FileWriter(fileFiltered.getAbsoluteFile(), false);
-            BufferedWriter bw = new BufferedWriter(fw);
-
-            String[] righe = file._2().split(String.format("\n"));
-            for (int i = 0; i < righe.length; i++) {
-                String[] valori = righe[i].split(",");
-
-                //clean the last two character to fix a strange behaviour with new "line type of operations"
-                //Gaspa remembers the mysterious "^M" on vim, unknow to Java (and to himself also).
-                valori[valori.length - 1] = "";
-                valori[valori.length - 2] = "";
-                for (int j = 0; j < colonneValide.length; j++) {
-                    //scrive solo le colonne con indice contenuto in "colonneValide"
-                    bw.write(valori[colonneValide[j]] + ",");
-                }
-                bw.write(String.format("%n"));
-            }
-            bw.close();
-            return new Tuple2(file._1(), "DONE!");
-        });
-
-        JavaRDD<String> textFileLastDay = spark_context.textFile(data_path + "AnalisiFrequenzaValori/lastDay.csv", 10000);
-
-        JavaPairRDD<String, ArrayList<String>> healthy = textFileLastDay.mapToPair(riga ->
-        {
-            String key = "0";
-            String[] valori = riga.split(",");
-            ArrayList<String> lista = new ArrayList<>();
-            if (riga.contains("serial_number")) {
-                key = "-1";
-                lista.add("0");
-                lista.add("0");
-                lista.add("0");
-            } else {
-                for (int i = 0; i < colonneValide.length; i++)
-                    lista.add(valori[colonneValide[i]]);
-            }
-            return new Tuple2(key, lista);
-        });
-
-
-        List<Tuple2<String, ArrayList<String>>> failedCollect = failed.collect();
-        List<Tuple2<String, ArrayList<String>>> healthyCollect = healthy.collect();
-
-        String filename = data_path + "forDraw.csv";
-        File fileOutput = new File(filename);
-        if (!fileOutput.exists()) {
-            fileOutput.createNewFile();
-        }
-        bw.write("C" + ","+"X" + ","+"Y" + ","+"Z");
-
-        FileWriter fw = new FileWriter(fileOutput.getAbsoluteFile(), false); // creating fileWriter object with the file
-        BufferedWriter bw = new BufferedWriter(fw); // creating bufferWriter which is used to write the content into the file
-        
-        bw.write("C" + ","+"X" + ","+"Y" + ","+"Z");
-        
-        for (Tuple2<String, ArrayList<String>> record : healthyCollect) {
-            bw.write(record._1() + ",");
-            for (String valore : record._2()) {
-                bw.write(valore + ",");
-            }
-            bw.write(String.format("%n"));
-        }
-
-        for (Tuple2<String, ArrayList<String>> record : failedCollect) {
-            bw.write(record._1() + ",");
-            for (String valore : record._2()) {
-                bw.write(valore + ",");
-            }
-            bw.write(String.format("%n"));
-        }
-        bw.close();*/
     }
 }
