@@ -1,22 +1,16 @@
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
-import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.PairFlatMapFunction;
 import scala.Tuple2;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.lang.*;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class Main {
 
     public static void main(String[] args) throws IOException {
         final String data_path = Utils.path;
+        final int columnTemperature = 29;
 
         System.out.println("Data path: " + data_path);
 
@@ -33,147 +27,101 @@ public class Main {
                 org.apache.hadoop.fs.LocalFileSystem.class.getName()
         );
 
-        /*frequent columns
-        4,failure,24471617
-        14,smart_5_raw,24471593         Read Channel Margin
-        50,smart_193_raw,24157811       Load/Unload Cycle Count
-        58,smart_197_raw,24471593       Current Pending Sector Count
-        60,smart_198_raw,24471593       Uncorrectable Sector Count
+        JavaPairRDD<String, String> textFile = spark_context.wholeTextFiles(data_path + "filteredColumns/", 10000);
 
-        */
-
-        final int[] colonneValide = new int[]{4, 14, 50, 58, 60};
-
-        JavaRDD<String> textFileLastDay = spark_context.textFile(data_path + "AnalisiFrequenzaValori/lastDay.csv", 10000);
-
-        JavaPairRDD<String, ArrayList<String>> healthy = textFileLastDay.mapToPair(riga ->
+        JavaPairRDD<String, ArrayList<Double>> temperature = textFile.mapToPair(fileDisco ->
         {
-            String key = "0";
-            String[] valori = riga.split(",");
-            ArrayList<String> lista = new ArrayList<>();
-            if (valori[4].compareTo("0") == 0) {
-                for (int i = 0; i < colonneValide.length; i++)
-                    if (valori[colonneValide[i]].compareTo("") == 0)
-                        lista.add("0");
-                    else
-                        lista.add(valori[colonneValide[i]]);
+            String[] tempKey = fileDisco._1().split("/");
+            tempKey[0] = tempKey[tempKey.length - 1];//reuse the value at 0 as name
 
-            } else {
-                key = "-1";
-                for (int i = 0; i < colonneValide.length; i++)
-                    lista.add("0");
-            }
-            return new Tuple2(key, lista);
-        });
-
-        JavaPairRDD<String, String> textFile = spark_context.wholeTextFiles(data_path + "Data", 1000);
-
-        JavaPairRDD<String, ArrayList<Tuple2<String, ArrayList<String>>>> failedGroupByDay = textFile.mapToPair(file ->
-        {
-            String[] dischi = file._2().split(String.format("\n"));
-            ArrayList<Tuple2<String, ArrayList<String>>> lista = new ArrayList<>();
-            for (String disco : dischi) {
-                String[] valori = disco.split(",");
-                if (valori[4].compareTo("1") == 0) {
-                    ArrayList<String> recordDisco = new ArrayList<>();
-                    for (int i = 0; i < colonneValide.length; i++) {
-                        if (valori[colonneValide[i]].compareTo("") == 0)
-                            recordDisco.add("0");
-                        else
-                            recordDisco.add(valori[colonneValide[i]]);
+            ArrayList<Double> dischi = new ArrayList<Double>();
+            for (String giorno : fileDisco._2().split(String.format("%n"))) {
+                if (!giorno.contains("date")) {
+                    try {
+                        dischi.add(Double.parseDouble(giorno.split(",")[columnTemperature]));
+                    } catch (Exception ex) {//sometimes the temperature is missing :(
+                        dischi.add(25D);
                     }
-                    lista.add(new Tuple2("1", recordDisco));
                 }
             }
-            return new Tuple2(1, lista);
+            return new Tuple2(tempKey[0], dischi);
         });
 
-        JavaPairRDD<String, ArrayList<String>> failed = failedGroupByDay.flatMapToPair((PairFlatMapFunction<Tuple2<String, ArrayList<Tuple2<String, ArrayList<String>>>>, String, ArrayList<String>>) t -> {
-            List<Tuple2<String, ArrayList<String>>> result = new ArrayList<>();
+        JavaPairRDD<String, ArrayList<Double>> result = temperature.mapToPair((Tuple2<String, ArrayList<Double>> temperatureGiornata) ->
+        {
+            double mean = 0;
+            double sum = 0;
+            for (Double temperatura : temperatureGiornata._2())
+                sum = sum + temperatura.intValue();
 
-            for (Tuple2<String, ArrayList<String>> lista : t._2()) {
-                result.add(new Tuple2(lista._1(), lista._2()));
-            }
-            return result.iterator();
+            mean = sum / (double) temperatureGiornata._2().size();
+
+            double DevSTD = 0;
+            for (Double temperatura : temperatureGiornata._2())
+                DevSTD = Math.pow(temperatura.doubleValue() - mean, 2);
+
+            DevSTD = DevSTD / (double) temperatureGiornata._2().size();
+            DevSTD = Math.sqrt(DevSTD);
+
+            ArrayList<Double> valori = new ArrayList<>();
+            valori.add(mean);
+            valori.add(DevSTD);
+            return new Tuple2<String, ArrayList<Double>>(temperatureGiornata._1(), valori);
         });
 
-        List<Tuple2<String, ArrayList<String>>> failedCollected = failed.collect();
-        List<Tuple2<String, ArrayList<String>>> healthyCollected = healthy.collect();
+        JavaPairRDD<String, String> output = result.mapToPair((Tuple2<String, ArrayList<Double>> valori) ->
+                new Tuple2<String, String>("0", valori._1() +
+                        "," + valori._2().get(0).doubleValue() +
+                        "," + valori._2().get(1).doubleValue())
+        );
 
-        String filename = data_path + "forMATLAB.csv";
-        File fileOutput = new File(filename);
-        if (!fileOutput.exists()) {
-            fileOutput.createNewFile();
-        }
+        output.reduceByKey((String StrA, String StrB) -> {
+                    return StrA + String.format("%n") + StrB;
+                }
+        ).foreach((Tuple2<String, String> allInOne) -> System.out.print(allInOne._2()));
 
-        FileWriter fw = new FileWriter(fileOutput.getAbsoluteFile(), false); // creating fileWriter object with the file
-        BufferedWriter bw = new BufferedWriter(fw); // creating bufferWriter which is used to write the content into the file
+        //now tempMin, TempMax, Count drive, total capacity
+        JavaPairRDD<String, String> textFile2 = spark_context.wholeTextFiles(data_path + "Data", 10000);
 
-        String[] COLONNE = new String[]{"failure", "Read Channel Margin",
-                "Current Pending Sector Count", "Uncorrectable Sector Count",
-                "Load_Unload Cycle Count"};
-        for (String nome : COLONNE)
-            bw.write(nome + ",");
-        bw.write(String.format("%n"));
+        JavaPairRDD<String, ArrayList<Double>> stats = textFile2.mapToPair(fileDisco ->
+        {
+            String[] tempKey = fileDisco._1().split("/");
+            tempKey[0] = tempKey[tempKey.length - 1];//reuse the value at 0 as name
 
-        for (Tuple2<String, ArrayList<String>> record : failedCollected) {
-            for (String valore : record._2()) {
-                bw.write(valore + ",");
+            ArrayList<Double> dati = new ArrayList<Double>();
+            int count=-1;
+            double totalCapacity=-1;
+            int minTemp=99999;
+            int maxTemp=-99999;
+            for (String riga : fileDisco._2().split(String.format("%n"))) {
+                if (!riga.contains("date")) {
+                    count++;
+                    String[] linea=riga.split(",");
+                    totalCapacity=totalCapacity+Double.parseDouble(linea[3]);
+                    int temp_TEMP=minTemp;
+                    try {
+                        temp_TEMP = Integer.parseInt(linea[52]);
+                    }
+                    catch(java.lang.NumberFormatException ex){}
+                    if(temp_TEMP<minTemp)
+                        minTemp=temp_TEMP;
+                    if(temp_TEMP>maxTemp)
+                        maxTemp=temp_TEMP;
+                }
             }
-            bw.write(String.format("%n"));
+            dati.add(Double.parseDouble(""+count));
+            dati.add(Double.parseDouble(""+totalCapacity));
+            dati.add(Double.parseDouble(""+minTemp));
+            dati.add(Double.parseDouble(""+maxTemp));
+            return new Tuple2(tempKey[0], dati);
+        });
+
+        List<Tuple2<String,ArrayList<Double>>> risultato=stats.collect();
+
+        System.out.println("Data,count,Tot_Capacity,minTemp,MaxTemp");
+        for(Tuple2<String,ArrayList<Double>> tupla: risultato)
+        {
+            System.out.println(tupla._1()+","+tupla._2().get(0)+","+tupla._2().get(1)+","+tupla._2().get(2)+","+tupla._2().get(3));
         }
-
-        for (Tuple2<String, ArrayList<String>> record : healthyCollected) {
-            for (String valore : record._2()) {
-                bw.write(valore + ",");
-            }
-            bw.write(String.format("%n"));
-        }
-        bw.close();
-
-        filename = data_path + "forMATLABFailed.csv";
-        fileOutput = new File(filename);
-        if (!fileOutput.exists()) {
-            fileOutput.createNewFile();
-        }
-
-        fw = new FileWriter(fileOutput.getAbsoluteFile(), false);
-        bw = new BufferedWriter(fw);
-
-        for (String nome : COLONNE)
-            bw.write(nome + ",");
-        bw.write(String.format("%n"));
-
-        for (Tuple2<String, ArrayList<String>> record : failedCollected) {
-            for (String valore : record._2()) {
-                bw.write(valore + ",");
-            }
-            bw.write(String.format("%n"));
-        }
-
-        bw.close();
-
-        filename = data_path + "forMATLABHealthy.csv";
-        fileOutput = new File(filename);
-        if (!fileOutput.exists()) {
-            fileOutput.createNewFile();
-        }
-
-        fw = new FileWriter(fileOutput.getAbsoluteFile(), false);
-        bw = new BufferedWriter(fw);
-
-        for (String nome : COLONNE)
-            bw.write(nome + ",");
-        bw.write(String.format("%n"));
-
-        for (Tuple2<String, ArrayList<String>> record : healthyCollected) {
-            for (String valore : record._2()) {
-                bw.write(valore + ",");
-            }
-            bw.write(String.format("%n"));
-        }
-        bw.close();
-
-        bw.close();
     }
 }

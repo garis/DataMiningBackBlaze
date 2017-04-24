@@ -1,0 +1,47 @@
+import java.io.IOException;
+import java.lang.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+
+public class Main {
+
+    public static void main(String[] args) throws IOException {
+        final String data_path = Utils.path+"forMATLABHealthy.csv";
+        final int colonna_interesse=4;
+
+        System.out.println("Data path: " + data_path);
+
+        String file_content = new String(Files.readAllBytes(Paths.get(data_path)));
+
+        String[] lines= file_content.split(String.format("%n"));
+        ArrayList<Double> valori=new ArrayList<>();
+
+        System.out.println("Analisi di:  "+lines[0].split(",")[colonna_interesse]);
+
+        for(String riga : lines)
+        {
+            try {
+                valori.add(Double.parseDouble(riga.split(",")[colonna_interesse]));
+            }
+            catch(Exception ex){ System.out.println("!!! Errore trascurabile se capita una sola volta");}
+        }
+
+        System.out.println("#valori: "+valori.size());
+
+        valori.sort((Double d1,Double d2)-> d1.compareTo(d2));
+
+        Double[] vettore=valori.toArray(new Double[valori.size()]);
+
+        double m1=vettore[0],m2=vettore[vettore.length-1];
+        for(int i=1;i<vettore.length/2;i++)
+        {
+            m1=(m1+vettore[i])/2;
+            m1=(m1+vettore[vettore.length-1-i])/2;
+        }
+
+        System.out.println("m1 "+m1);
+        System.out.println("m2 "+m2);
+        System.out.println("result:  "+(m1+(m2-m1)/2));
+    }
+}
