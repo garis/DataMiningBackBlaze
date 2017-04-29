@@ -3,9 +3,6 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.PairFlatMapFunction;
-import org.apache.spark.mllib.fpm.AssociationRules;
-import org.apache.spark.mllib.fpm.FPGrowth;
-import org.apache.spark.mllib.fpm.FPGrowthModel;
 import scala.Tuple2;
 
 import java.io.BufferedWriter;
@@ -183,29 +180,5 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
         }
         bw.write(String.format("%n"));
         bw.close();
-
-
-        //MINING
-
-        //JavaRDD<String> data = spark_context.textFile(data_path+"forFrequentPatternMiningHEALTHY.txt");
-        JavaRDD<String> data = spark_context.textFile(data_path+"forFrequentPatternMiningFAILED.txt");
-
-        JavaRDD<List<String>> transactions = data.map(line -> Arrays.asList(line.split(" ")));
-
-        FPGrowth fpg = new FPGrowth()
-                .setMinSupport(0.4)
-                .setNumPartitions(10);
-        FPGrowthModel<String> model = fpg.run(transactions);
-
-        for (FPGrowth.FreqItemset<String> itemset: model.freqItemsets().toJavaRDD().collect()) {
-            System.out.println("[" + itemset.javaItems() + "], " + itemset.freq());
-        }
-
-        double minConfidence = 0.8;
-        for (AssociationRules.Rule<String> rule
-                : model.generateAssociationRules(minConfidence).toJavaRDD().collect()) {
-            System.out.println(
-                    rule.javaAntecedent() + " => " + rule.javaConsequent() + ", " + rule.confidence());
-        }
     }
 }
