@@ -30,7 +30,8 @@ public class Main {
 
             for (int i = 1; i < righe.length; i++) {
                 String[] valori = righe[i].split(",");
-                for (int j = 0; j < valori.length; j++) {
+                //forget the last column: smart_255_raw
+                for (int j = 0; j < valori.length-1; j++) {
                     if (valori[j].compareTo("") != 0) {
                         contatoreValori[j]++;
                     }
@@ -92,7 +93,6 @@ OUTPUT: colonna X ha Y valori
 2,model,24471617
 3,capacity_bytes,24471617
 4,failure,24471617
-94,smart_255_raw,24471617
 5,smart_1_normalized,24471593
 6,smart_1_raw,24471593
 9,smart_3_normalized,24471593
@@ -182,4 +182,5 @@ OUTPUT: colonna X ha Y valori
 29,smart_15_normalized,0
 30,smart_15_raw,0
 93,smart_255_normalized,0
+94,smart_255_raw,0
          */
