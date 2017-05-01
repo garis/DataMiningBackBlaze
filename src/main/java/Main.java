@@ -280,7 +280,7 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
         model = fpg.run(transactions);
 
         for (FPGrowth.FreqItemset<String> itemset: model.freqItemsets().toJavaRDD().collect()) {
-            //System.out.println("[" + itemset.javaItems() + "], " + itemset.freq());
+            System.out.println("[" + itemset.javaItems() + "], " + itemset.freq());
         }
 
         filename = data_path + "resultFrequentPatternMiningHEALTHY.csv";
