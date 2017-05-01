@@ -265,7 +265,7 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
 
         for (AssociationRules.Rule<String> rule
                 : model.generateAssociationRules(minConfidence).toJavaRDD().collect()) {
-            bw.write(rule.javaAntecedent() + ", " + rule.javaConsequent() + ", " + rule.confidence()+", "+(rule.freqUnion()/total)+String.format("%n"));
+            bw.write(rule.javaAntecedent() + ", " + rule.javaConsequent() + ", " + rule.confidence()+", "+String.format("%n"));
         }
         bw.close();
 
@@ -280,7 +280,7 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
         model = fpg.run(transactions);
 
         for (FPGrowth.FreqItemset<String> itemset: model.freqItemsets().toJavaRDD().collect()) {
-            //System.out.println("[" + itemset.javaItems() + "], " + itemset.freq());
+            System.out.println("[" + itemset.javaItems() + "], " + itemset.freq());
         }
 
         filename = data_path + "resultFrequentPatternMiningHEALTHY.csv";
@@ -294,7 +294,7 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
 
         for (AssociationRules.Rule<String> rule
                 : model.generateAssociationRules(minConfidence).toJavaRDD().collect()) {
-            bw.write(rule.javaAntecedent() + ", " + rule.javaConsequent() + ", " + rule.confidence()+", "+(rule.freqUnion()/total)+String.format("%n"));
+            bw.write(rule.javaAntecedent() + ", " + rule.javaConsequent() + ", " + rule.confidence()+", "+String.format("%n"));
         }
         bw.close();
     }
