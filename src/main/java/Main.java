@@ -54,27 +54,27 @@ public class Main {
 
 we ignore the normalized values, date, SN, model and capacity. We obtain:
 4,failure,24471617
-6,smart_1_raw,24471593
-10,smart_3_raw,24471593
-12,smart_4_raw,24471593
-14,smart_5_raw,24471593
-16,smart_7_raw,24471593
-20,smart_9_raw,24471593
-22,smart_10_raw,24471593
-26,smart_12_raw,24471593
-58,smart_197_raw,24471593
-60,smart_198_raw,24471593
-62,smart_199_raw,24471593
-52,smart_194_raw,24471342
-48,smart_192_raw,24428958
-50,smart_193_raw,24157811
+6,smart_1_raw,24471593      R_ERR:      Read Error Rate
+10,smart_3_raw,24471593     SPIN-UP:    Spin-Up Time
+12,smart_4_raw,24471593     S&S:        Start/Stop Count
+14,smart_5_raw,24471593     REALLOC:    Reallocated Sectors Count
+16,smart_7_raw,24471593     SEEK-ERR:   Seek Error Rate
+20,smart_9_raw,24471593     HOURS:      Power-On Hours
+22,smart_10_raw,24471593    SPIN-ERR:   Spin Retry Count
+26,smart_12_raw,24471593    POWER-CYCL: Power Cycle Count
+58,smart_197_raw,24471593   UNST-SEC:   Current Pending Sector Count
+60,smart_198_raw,24471593   ABS-ERR:    Uncorrectable Sector Count
+62,smart_199_raw,24471593   IF-ERR:     UltraDMA CRC Error Count
+52,smart_194_raw,24471342   TEMP:       Temperature
+48,smart_192_raw,24428958   RETRACT:    Number of power-off or emergency retract cycles
+50,smart_193_raw,24157811   LOAD&UNL:   Count of load/unload cycles into head landing zone position
          */
 
 
         // @formatter:off
-        final String[] valuesAR = new String[]{"A", "B", "C", "D", "E", "F", "G", "H", "I", "L", "M", "N", "O", "P", "Q"};
-        final int[] lowerThreshold = new int[]{ 1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1};
-        final int[] columnIndex = new int[]{    4,   6,   10,  12,  14,  16,  20,  22,  26,  58,  60,  62,  52,  48,  50};
+        final String[] valuesAR = new String[]{"failure", "R_ERR", "SPIN-UP", "S&S", "REALLOC", "SEEK-ERR", "HOURS", "SPIN-ERR", "POWER-CYCL", "UNST-SEC", "ABS-ERR", "IF-ERR", "TEMP", "RETRACT", "LOAD&UNL"};
+        final int[] lowerThreshold = new int[]{ 1,         1,       1,         1,     1,         1,          1,       1,          1,            1,          1,         1,        1,      1,         1};
+        final int[] columnIndex = new int[]{    4,         6,       10,        12,    14,        16,         20,      22,         26,           58,         60,        62,       52,     48,        50};
         // @formatter:on
         final String data_path = Utils.path;
 
