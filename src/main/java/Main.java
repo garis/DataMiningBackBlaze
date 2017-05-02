@@ -17,6 +17,8 @@ import java.util.*;
 public class Main {
 
     public static void main(String[] args) throws IOException {
+        final long startTime = System.currentTimeMillis();
+
         /*From this (see:"ContaQuantiValoriInOgniColonna.txt"):
 0,date,24471617
 1,serial_number,24471617
@@ -297,5 +299,8 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
             bw.write(rule.javaAntecedent() + ", " + rule.javaConsequent() + ", " + rule.confidence()+", "+String.format("%n"));
         }
         bw.close();
+
+        final long endTime = System.currentTimeMillis();
+        System.out.println("Total execution time: " + (endTime - startTime) );
     }
 }
