@@ -18,6 +18,13 @@ public class Main {
 
     public static void main(String[] args) throws IOException {
         final long startTime = System.currentTimeMillis();
+        /*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        HELP:
+        sistemare la classe Utils mettendo il path corretto del dataset
+        creare la cartella (dentro al path di Utils) "AnalisiFrequenzaValori"
+        copiare dentro ad essa il file "2016-12-31.csv" del dataset
+        e tutto dovrebbe andare (ammess odi aver configurato Hadoop e Spark)
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
 
         /*From this (see:"ContaQuantiValoriInOgniColonna.txt"):
 0,date,24471617
@@ -74,14 +81,17 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
 
 
         // @formatter:off
+        //this give a name to the item, very useful when reading the rules
         final String[] valuesAR = new String[]{"failure", "R_ERR", "SPIN-UP", "S&S", "REALLOC", "SEEK-ERR", "HOURS", "SPIN-ERR", "POWER-CYCL", "UNST-SEC", "ABS-ERR", "IF-ERR", "TEMP", "RETRACT", "LOAD&UNL"};
         final int[] lowerThreshold = new int[]{ 1,         1,       1,         1,     1,         1,          1,       1,          1,            1,          1,         1,        1,      1,         1};
+        //list of interesting columns
         final int[] columnIndex = new int[]{    4,         6,       10,        12,    14,        16,         20,      22,         26,           58,         60,        62,       52,     48,        50};
         // @formatter:on
         final String data_path = Utils.path;
 
         System.out.println("Data path: " + data_path);
 
+        //initialize the Spark context in Java
         JavaSparkContext spark_context = new JavaSparkContext(new SparkConf()
                 .setAppName("Spark Count")
                 .setMaster("local")
@@ -95,15 +105,25 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
                 org.apache.hadoop.fs.LocalFileSystem.class.getName()
         );
 
-        //all failed disks on on file
+        //now we want all failed disks on on file
         //if the file doesn't exist (or it is the first run of the code) make a new one
 
         String filename = data_path + "AnalisiFrequenzaValori/failedDisks.csv";
         File fileOutput = new File(filename);
         if (!fileOutput.exists()) {
             fileOutput.createNewFile();
+            //on all the dataset (so for each of the 366 days of the dataset) load the .csv file...
             JavaPairRDD<String, String> textFile = spark_context.wholeTextFiles(data_path + "Data", 400);
 
+            //for each day (so for each .csv file) extract all the failed hard drive in a list of tuple, a tuple2 for each disk
+            //example: Day 1: Tuple(0,List(Tuple(1,...),Tuple(1,...),...)
+            //
+            //maybe the next diagram is a bit more clear:
+            //Day 1 --> Tuple(0,List)
+            //                    |
+            //                    |----Tuple2(1,smart-1-raw,smart-2-raw,...)
+            //                    |----Tuple2(1,smart-1-raw,smart-2-raw,...)
+            //                    |----Tuple2(1,smart-1-raw,smart-2-raw,...)
             JavaPairRDD<String, ArrayList<Tuple2<String, String>>> failedGroupByDay = textFile.mapToPair(file ->
             {
                 String key = "-1";
@@ -119,6 +139,22 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
                 return new Tuple2(key, lista);
             });
 
+            //now we want a tuple(key,value) for each failed hard drive
+            //so we extract for every day all the failed disks and with that
+            //we create a Tuple(key,values) for every disk
+            //diagram:
+            //from this:
+            //Day 1 --> Tuple(0,List)
+            //                    |
+            //                    |----Tuple2(1,smart-1-raw,smart-2-raw,...)
+            //                    |----Tuple2(1,smart-1-raw,smart-2-raw,...)
+            //                    |----Tuple2(1,smart-1-raw,smart-2-raw,...)
+            //to this:
+            //Tuple2(1,smart-1-raw,smart-2-raw,...)
+            //Tuple2(1,smart-1-raw,smart-2-raw,...)
+            //Tuple2(1,smart-1-raw,smart-2-raw,...)
+            //
+            //we extract the tuples from the tuple of each day
             JavaPairRDD<String, String> failedDisks = failedGroupByDay.flatMapToPair((PairFlatMapFunction<Tuple2<String, ArrayList<Tuple2<String, String>>>, String, String>) t -> {
                 List<Tuple2<String, String>> resultFailed = new ArrayList<>();
 
@@ -128,6 +164,8 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
                 return resultFailed.iterator();
             });
 
+            //for speed we write the result to a file so the next time we gain speed
+            //because we don't need anymore to analyze the entire dataset
             List<Tuple2<String, String>> resultFailed = failedDisks.collect();
 
             FileWriter fw = new FileWriter(fileOutput.getAbsoluteFile(), false);
@@ -143,12 +181,16 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
             bw.close();
         }
 
-        //now the analisys
+        //now the analysis
 
         //healthy disks
 
+        //load the file
         JavaRDD<String> textFileLastDay = spark_context.textFile(data_path + "AnalisiFrequenzaValori/lastDay.csv", 1);
 
+        //for each line make the tuple
+        //each tuple rappresent a disk
+        //but we load only the columns that we want based on the columnIndex, lowerThreshold and valuesAR
         JavaPairRDD<String, ArrayList<String>> healthy = textFileLastDay.mapToPair(riga ->
         {
             String key = "0";
@@ -168,6 +210,8 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
             return new Tuple2(key, lista);
         });
 
+        //and now we buffer the result (the filtered files) in a file on disk
+        //this is a bit useless because we do not gain a lot of perfomance but is great for debug
         List<Tuple2<String, ArrayList<String>>> result = healthy.collect();
 
         filename = data_path + "forFrequentPatternMiningHEALTHY.txt";
@@ -176,8 +220,8 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
             fileOutput.createNewFile();
         }
 
-        FileWriter fw = new FileWriter(fileOutput.getAbsoluteFile(), false); // creating fileWriter object with the file
-        BufferedWriter bw = new BufferedWriter(fw); // creating bufferWriter which is used to write the content into the file
+        FileWriter fw = new FileWriter(fileOutput.getAbsoluteFile(), false);
+        BufferedWriter bw = new BufferedWriter(fw);
 
         for (Tuple2<String, ArrayList<String>> tupla : result) {
             if (tupla._1().compareTo("-1") != 0) {
@@ -191,6 +235,7 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
 
         //failed disks
 
+        //same thing as above
         JavaRDD<String> textFileFailed = spark_context.textFile(data_path + "AnalisiFrequenzaValori/failedDisks.csv", 1);
 
         JavaPairRDD<String, ArrayList<String>> failed = textFileFailed.mapToPair(riga ->
@@ -238,23 +283,17 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
 
 
         //mining
+        //really not much to say
+        //pretty much copy and paste from the documentation
 
-        //JavaRDD<String> data = spark_context.textFile(data_path+"forFrequentPatternMiningHEALTHY.txt");
-        JavaRDD<String> data = spark_context.textFile(data_path+"forFrequentPatternMiningFAILED.txt");
+        JavaRDD<String> data = spark_context.textFile(data_path + "forFrequentPatternMiningFAILED.txt");
 
         JavaRDD<List<String>> transactions = data.map(line -> Arrays.asList(line.split(" ")));
-        long total=transactions.count();
 
         FPGrowth fpg = new FPGrowth()
                 .setMinSupport(0.4)
                 .setNumPartitions(10);
         FPGrowthModel<String> model = fpg.run(transactions);
-
-        for (FPGrowth.FreqItemset<String> itemset: model.freqItemsets().toJavaRDD().collect()) {
-            //System.out.println("[" + itemset.javaItems() + "], " + itemset.freq());
-        }
-
-        double minConfidence = 0.8;
 
         filename = data_path + "resultFrequentPatternMiningFAILED.csv";
         fileOutput = new File(filename);
@@ -265,25 +304,25 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
         fw = new FileWriter(fileOutput.getAbsoluteFile(), false); // creating fileWriter object with the file
         bw = new BufferedWriter(fw); // creating bufferWriter which is used to write the content into the file
 
-        for (AssociationRules.Rule<String> rule
-                : model.generateAssociationRules(minConfidence).toJavaRDD().collect()) {
-            bw.write(rule.javaAntecedent() + ", " + rule.javaConsequent() + ", " + rule.confidence()+", "+String.format("%n"));
+        for (FPGrowth.FreqItemset<String> itemset : model.freqItemsets().toJavaRDD().collect()) {
+            bw.write("[" + itemset.javaItems() + "], " + itemset.freq()+String.format("%n"));
         }
         bw.close();
 
-        data = spark_context.textFile(data_path+"forFrequentPatternMiningHEALTHY.txt");
+        //for (AssociationRules.Rule<String> rule
+        //        : model.generateAssociationRules(minConfidence).toJavaRDD().collect()) {
+        //    bw.write(rule.javaAntecedent() + ", " + rule.javaConsequent() + ", " + rule.confidence() + ", " + String.format("%n"));
+        //}
+        //bw.close();
+
+        data = spark_context.textFile(data_path + "forFrequentPatternMiningHEALTHY.txt");
 
         transactions = data.map(line -> Arrays.asList(line.split(" ")));
-        total=transactions.count();
 
         fpg = new FPGrowth()
                 .setMinSupport(0.4)
                 .setNumPartitions(10);
         model = fpg.run(transactions);
-
-        for (FPGrowth.FreqItemset<String> itemset: model.freqItemsets().toJavaRDD().collect()) {
-            System.out.println("[" + itemset.javaItems() + "], " + itemset.freq());
-        }
 
         filename = data_path + "resultFrequentPatternMiningHEALTHY.csv";
         fileOutput = new File(filename);
@@ -294,13 +333,19 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
         fw = new FileWriter(fileOutput.getAbsoluteFile(), false); // creating fileWriter object with the file
         bw = new BufferedWriter(fw); // creating bufferWriter which is used to write the content into the file
 
-        for (AssociationRules.Rule<String> rule
-                : model.generateAssociationRules(minConfidence).toJavaRDD().collect()) {
-            bw.write(rule.javaAntecedent() + ", " + rule.javaConsequent() + ", " + rule.confidence()+", "+String.format("%n"));
+        for (FPGrowth.FreqItemset<String> itemset : model.freqItemsets().toJavaRDD().collect()) {
+            bw.write("[" + itemset.javaItems() + "], " + itemset.freq()+String.format("%n"));
         }
+
         bw.close();
 
+        //for (AssociationRules.Rule<String> rule
+        //        : model.generateAssociationRules(minConfidence).toJavaRDD().collect()) {
+        //    bw.write(rule.javaAntecedent() + ", " + rule.javaConsequent() + ", " + rule.confidence() + ", " + String.format("%n"));
+        //}
+        //bw.close();
+
         final long endTime = System.currentTimeMillis();
-        System.out.println("Total execution time: " + (endTime - startTime) );
+        System.out.println("Total execution time: " + (endTime - startTime));
     }
 }
