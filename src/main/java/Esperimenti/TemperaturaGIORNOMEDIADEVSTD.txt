@@ -10,7 +10,7 @@ public class Main {
 
     public static void main(String[] args) throws IOException {
         final String data_path = Utils.path;
-        final int columnTemperature = 29;
+        final int columnTemperature = 52;
 
         System.out.println("Data path: " + data_path);
 
@@ -27,7 +27,7 @@ public class Main {
                 org.apache.hadoop.fs.LocalFileSystem.class.getName()
         );
 
-        JavaPairRDD<String, String> textFile = spark_context.wholeTextFiles(data_path + "filteredColumns/", 10000);
+        JavaPairRDD<String, String> textFile = spark_context.wholeTextFiles(data_path + "Data", 10000);
 
         JavaPairRDD<String, ArrayList<Double>> temperature = textFile.mapToPair(fileDisco ->
         {
@@ -69,17 +69,6 @@ public class Main {
             return new Tuple2<String, ArrayList<Double>>(temperatureGiornata._1(), valori);
         });
 
-        JavaPairRDD<String, String> output = result.mapToPair((Tuple2<String, ArrayList<Double>> valori) ->
-                new Tuple2<String, String>("0", valori._1() +
-                        "," + valori._2().get(0).doubleValue() +
-                        "," + valori._2().get(1).doubleValue())
-        );
-
-        output.reduceByKey((String StrA, String StrB) -> {
-                    return StrA + String.format("%n") + StrB;
-                }
-        ).foreach((Tuple2<String, String> allInOne) -> System.out.print(allInOne._2()));
-
         //now tempMin, TempMax, Count drive, total capacity
         JavaPairRDD<String, String> textFile2 = spark_context.wholeTextFiles(data_path + "Data", 10000);
 
@@ -97,7 +86,8 @@ public class Main {
                 if (!riga.contains("date")) {
                     count++;
                     String[] linea=riga.split(",");
-                    totalCapacity=totalCapacity+Double.parseDouble(linea[3]);
+                    if(Double.parseDouble(linea[3])>0)
+                        totalCapacity=totalCapacity+Double.parseDouble(linea[3]);
                     int temp_TEMP=minTemp;
                     try {
                         temp_TEMP = Integer.parseInt(linea[52]);
@@ -117,6 +107,24 @@ public class Main {
         });
 
         List<Tuple2<String,ArrayList<Double>>> risultato=stats.collect();
+
+
+        JavaPairRDD<String, String> output = result.mapToPair((Tuple2<String, ArrayList<Double>> valori) ->
+                new Tuple2<String, String>("0", valori._1() +
+                        "," + valori._2().get(0).doubleValue() +
+                        "," + valori._2().get(1).doubleValue())
+        );
+
+        List<Tuple2<String,String>> temps=  output.reduceByKey((String StrA, String StrB) -> {
+                    return StrA + String.format("%n") + StrB;
+                }
+        ).collect();// .foreach((Tuple2<String, String> allInOne) -> System.out.print(allInOne._2()));
+
+        System.out.println("TEMPS");
+        for(Tuple2<String,String> tupla: temps)
+        {
+            System.out.println(tupla._1()+","+tupla._2());
+        }
 
         System.out.println("Data,count,Tot_Capacity,minTemp,MaxTemp");
         for(Tuple2<String,ArrayList<Double>> tupla: risultato)
