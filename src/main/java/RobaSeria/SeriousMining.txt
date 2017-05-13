@@ -81,11 +81,22 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
 
 
         // @formatter:off
+
+        //example of Pastea's idea implementations (thresholds with overlapping boundaries) with example values:    0   1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  16  17  18  19  20  21  22 ............................
+        //final String[] valuesAR = new String[]{      "R_ERR_LOW", "R_ERR_MED", "R_ERR_HIGH"};                     |-------------------R_ERR_LOW--------------------|                      |--------------------R_ERR_HIGH-------..........
+        //final int[] lowerThreshold = new int[]{       0,           8,           18};                                                              |-----------------------R_ERR_MED------------------------|
+        //final double[] upperThreshold = new double[]{ 12,          22,          Double.MAX_VALUE};
+        //final int[] columnIndex = new int[]{          6,           6,           6};
+        //in word this means: for the sixth column we want three item:  one if the value >= 0 and <= 12
+        //                                                              one if the value >= 8 and <= 22
+        //                                                              one if the value >= 18 and <= +inf
+
         //this give a name to the item, very useful when reading the rules
-        final String[] valuesAR = new String[]{"failure", "R_ERR", "SPIN-UP", "S&S", "REALLOC", "SEEK-ERR", "HOURS", "SPIN-ERR", "POWER-CYCL", "UNST-SEC", "ABS-ERR", "IF-ERR", "TEMP", "RETRACT", "LOAD&UNL"};
-        final int[] lowerThreshold = new int[]{ 1,         1,       1,         1,     1,         1,          1,       1,          1,            1,          1,         1,        1,      1,         1};
-        //list of interesting columns
-        final int[] columnIndex = new int[]{    4,         6,       10,        12,    14,        16,         20,      22,         26,           58,         60,        62,       52,     48,        50};
+        final String[] valuesAR = new String[]{         "failure",          "R_ERR_LOW",        "R_ERR_MED",        "R_ERR_HIGH",      "SPIN-UP",          "S&S",              "REALLOC",          "SEEK-ERR",         "HOURS",            "SPIN-ERR",         "POWER-CYCL",       "UNST-SEC",         "ABS-ERR",          "IF-ERR",           "TEMP",             "RETRACT",          "LOAD&UNL"       };
+        final int[] lowerThreshold = new int[]{          1,                  0,                  8,                  18,                1,                  1,                  1,                  1,                  1,                  1,                  1,                  1,                  1,                  1,                  1,                  1,                  1               };
+        final double[] upperThreshold = new double[]{    Double.MAX_VALUE,   12,                 22,                 Double.MAX_VALUE,  Double.MAX_VALUE,   Double.MAX_VALUE,   Double.MAX_VALUE,   Double.MAX_VALUE,   Double.MAX_VALUE,   Double.MAX_VALUE,   Double.MAX_VALUE,   Double.MAX_VALUE,   Double.MAX_VALUE,   Double.MAX_VALUE,   Double.MAX_VALUE,   Double.MAX_VALUE,   Double.MAX_VALUE};
+        final int[] columnIndex = new int[]{             4,                  6,                  6,                  6,                 10,                 12,                 14,                 16,                 20,                 22,                 26,                 58,                 60,                 62,                 52,                 48,                 50              };
+        //columnIndex is the list of interesting columns
         // @formatter:on
         final String data_path = Utils.path;
 
@@ -116,18 +127,18 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
             JavaPairRDD<String, String> textFile = spark_context.wholeTextFiles(data_path + "Data", 400);
 
             //for each day (so for each .csv file) extract all the failed hard drive in a list of tuple, a tuple2 for each disk
-            //example: Day 1: Tuple(0,List(Tuple(1,...),Tuple(1,...),...)
+            //example: Day 1: Tuple2(0,List(Tuple2(1,...),Tuple2(1,...),...)
             //
             //maybe the next diagram is a bit more clear:
-            //Day 1 --> Tuple(0,List)
+            //Day 1 --> Tuple2(0,List)
             //                    |
-            //                    |----Tuple2(1,smart-1-raw,smart-2-raw,...)
-            //                    |----Tuple2(1,smart-1-raw,smart-2-raw,...)
-            //                    |----Tuple2(1,smart-1-raw,smart-2-raw,...)
+            //                    |----Tuple2(1,(column_0,column_1,...))
+            //                    |----Tuple2(1,(column_0,column_1,...))
+            //                    |----Tuple2(1,(column_0,column_1,...))
             JavaPairRDD<String, ArrayList<Tuple2<String, String>>> failedGroupByDay = textFile.mapToPair(file ->
             {
                 String key = "-1";
-                String[] dischi = file._2().split(String.format("\n"));
+                String[] dischi = file._2().split(String.format("%n"));
                 ArrayList<Tuple2<String, ArrayList<String>>> lista = new ArrayList<>();
                 for (String disco : dischi) {
                     key = "0";
@@ -144,15 +155,15 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
             //we create a Tuple(key,values) for every disk
             //diagram:
             //from this:
-            //Day 1 --> Tuple(0,List)
+            //Day 1 --> Tuple2(0,List)
             //                    |
-            //                    |----Tuple2(1,smart-1-raw,smart-2-raw,...)
-            //                    |----Tuple2(1,smart-1-raw,smart-2-raw,...)
-            //                    |----Tuple2(1,smart-1-raw,smart-2-raw,...)
+            //                    |----Tuple2(1,(column_0,column_1,...))
+            //                    |----Tuple2(1,(column_0,column_1,...))
+            //                    |----Tuple2(1,(column_0,column_1,...))
             //to this:
-            //Tuple2(1,smart-1-raw,smart-2-raw,...)
-            //Tuple2(1,smart-1-raw,smart-2-raw,...)
-            //Tuple2(1,smart-1-raw,smart-2-raw,...)
+            //Tuple2(1,(column_0,column_1,...))
+            //Tuple2(1,(column_0,column_1,...))
+            //Tuple2(1,(column_0,column_1,...))
             //
             //we extract the tuples from the tuple of each day
             JavaPairRDD<String, String> failedDisks = failedGroupByDay.flatMapToPair((PairFlatMapFunction<Tuple2<String, ArrayList<Tuple2<String, String>>>, String, String>) t -> {
@@ -201,7 +212,7 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
                 for (int i = 0; i < columnIndex.length; i++) {
                     if (!valori[columnIndex[i]].isEmpty()) {
                         double value = Double.parseDouble(valori[columnIndex[i]]);
-                        if (value > lowerThreshold[i])
+                        if (value >= lowerThreshold[i] && value <= upperThreshold[i])
                             lista.add(valuesAR[i]);
                     }
                 }
@@ -244,14 +255,12 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
             String[] valori = riga.split(",");
             ArrayList<String> lista = new ArrayList<>();
             //if failed check
-            //N.B: valori.length >= columnIndex.length is a very bad check but is sufficient to verify that there are at least some valid values
-            //because some records have small number of values (like 6)
+            //N.B: verifies that there are at least some valid values because some records have small number of values (like 6)
             if (valori.length > 6 && valori[4].compareTo("1") == 0) {
-
                 for (int i = 0; i < columnIndex.length; i++) {
                     if (!valori[columnIndex[i]].isEmpty()) {
                         double value = Double.parseDouble(valori[columnIndex[i]]);
-                        if (value > lowerThreshold[i])
+                        if (value >= lowerThreshold[i] && value <= upperThreshold[i])
                             lista.add(valuesAR[i]);
                     }
                 }
