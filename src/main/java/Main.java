@@ -95,6 +95,11 @@ public class Main {
             return resultFailed.iterator();
         });
 
+        //region DEBUG1
+        List<Tuple2<String, String>> debug1=res1.collect();
+        System.out.println("OK");
+        //endregion
+
         //region cinese di java misto spark
         //public <C> JavaPairRDD<K,C> combineByKey(Function<V,C> createCombiner,
         //        Function2<C,V,C> mergeValue,
@@ -131,11 +136,21 @@ public class Main {
                     return listA;
                 });
 
+        //region DEBUG1
+        List<Tuple2<String, ArrayList<String>>> debug2=res2.collect();
+        System.out.println("OK");
+        //endregion
+
         //filtra in modo che siano mantenuti solo i numero seriali con almeno numberOfDays record
         JavaPairRDD<String, ArrayList<String>> res3 = res2.filter((Tuple2<String, ArrayList<String>> tupla) -> {
             if (tupla._2().size() >= numberOfDays) return true;
             else return false;
         });
+
+        //region DEBUG4
+        //nothing special
+        //endregion
+
 
         //l'ArrayList<String> di records è già ordinato per data. Ora, per ogni numero seriale, si parte dal primo record
         //(l'ultimo ad essere presente dato che è fallito) al primo record do la chiave numberOfDays, alla secodna key do la chiave
@@ -154,6 +169,11 @@ public class Main {
             }
             return dataValori.iterator();
         });
+
+        //region DEBUG4
+        List<Tuple2<String, String>> debug4=res4.collect();
+        System.out.println("OK");
+        //endregion
 
         //adesso è simile a come fatto per ottenere res2, la si può pensare come un group by di database che raggruppa per chiave (gli id)
         //e ritorna una lista di record.
@@ -174,6 +194,11 @@ public class Main {
                         listA.add(str);
                     return listA;
                 });
+
+        //region DEBUG5
+        List<Tuple2<String, ArrayList<String>>> debug5=res5.collect();
+        System.out.println("OK");
+        //endregion
 
         //TO BE CONTINUED
 
