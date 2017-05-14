@@ -19,7 +19,7 @@ public class Main {
 
     public static void main(String[] args) throws IOException {
         final String data_path = Utils.path;
-        final int numberOfDays = 10;
+        final int numberOfDays = 5;
 
         //initialize the Spark context in Java
         JavaSparkContext spark_context = new JavaSparkContext(new SparkConf()
@@ -35,7 +35,7 @@ public class Main {
                 org.apache.hadoop.fs.LocalFileSystem.class.getName()
         );
 
-        JavaPairRDD<String, String> textFile = spark_context.wholeTextFiles(data_path + "Data", 400);
+        JavaPairRDD<String, String> textFile = spark_context.wholeTextFiles(data_path + "TESTDATASET", 400);
 
         //first get all the Serial Number of all the failed disks
         JavaPairRDD<String, ArrayList<Tuple2<String, String>>> failedDisks = textFile.mapToPair(file ->
@@ -69,7 +69,8 @@ public class Main {
             listOfSN.add(tupla._2());
         }
 
-        //get all the records of the failed drives
+        //CON RECORD INTENDO LA SINGOLA RIGA DI UN FILE .CSV
+        //ottiene tutti i records dei dischi falliti
         JavaPairRDD<String, ArrayList<Tuple2<String, String>>> failedDisksBySN = textFile.mapToPair(file ->
         {
             String key = "-1";
@@ -83,8 +84,9 @@ public class Main {
             return new Tuple2(key, lista);
         });
 
-        //extract all the Tuple2
-        JavaPairRDD<String, String> failedDisksRecords = failedDisksBySN.flatMapToPair((PairFlatMapFunction<Tuple2<String, ArrayList<Tuple2<String, String>>>, String, String>) t -> {
+        //estraggo tutte Tuple2
+        //Result: List<Tuple2<Serial Number,Record>>
+        JavaPairRDD<String, String> res1 = failedDisksBySN.flatMapToPair((PairFlatMapFunction<Tuple2<String, ArrayList<Tuple2<String, String>>>, String, String>) t -> {
             List<Tuple2<String, String>> resultFailed = new ArrayList<>();
 
             for (Tuple2<String, String> lista : t._2()) {
@@ -93,8 +95,7 @@ public class Main {
             return resultFailed.iterator();
         });
 
-        //now comes the hard part of the code
-
+        //region cinese di java misto spark
         //public <C> JavaPairRDD<K,C> combineByKey(Function<V,C> createCombiner,
         //        Function2<C,V,C> mergeValue,
         //        Function2<C,C,C> mergeCombiners)
@@ -107,10 +108,11 @@ public class Main {
         //DoubleFlatMapFunction<T>	    T => Iterable<Double>
         //PairFlatMapFunction<T, K, V>	T => Iterable<Tuple2<K, V>>
         //Function2<T1, T2, R>	        T1, T2 => R (function of two arguments)
-
-        //get all record for every Serial Number of broken hard drive and keep only if the number of records are >= numberOfDays
-        JavaPairRDD<String, ArrayList<String>> lastNumberOfDaysRecords = failedDisksRecords.combineByKey((String a) ->
-        //JavaPairRDD<String, String> lastNumberOfDaysRecords = failedDisksRecords.combineByKey((String a) ->
+        //endregion
+        //raggruppa per numero seriale andando a formare una lista di record per ogni numero seriale
+        //un po' come un group by di database raggruppo per numero seriale ottenendo una lista di record
+        //result List<Tuple2<SerialNumber, ArrayList<Record of days>>>
+        JavaPairRDD<String, ArrayList<String>> res2 = res1.combineByKey((String a) ->
                 {//createCombiner
                     ArrayList<String> list = new ArrayList<>();
                     list.add(a);
@@ -127,24 +129,36 @@ public class Main {
                     //inefficient but simple
                     listA.sort((String s, String t1) -> t1.compareTo(s));//inverse order so the recent record are on the top of the list
                     return listA;
-                })//filter all the failed hard drive that have less than numberOfDays days on the dataset
-                .filter((Tuple2<String, ArrayList<String>> tupla) -> {
-                    if (tupla._2().size() >= numberOfDays) return true;
-                    else return false;
-                })//now we convert JavaPairRDD<String, ArrayList<String>> === Tuple2(Serial Number, List of days)
-                // into ArrayList<Tuple2<counter,Valori>> === JavaPairRDD<Tuple2<counter,Valori>> forgetting about all the serial numbers
-                //we are interested only in the last numberOfDays of life of each failed HDD so we substitute the dates with counters
-                .flatMapToPair((PairFlatMapFunction<Tuple2<String, ArrayList<String>>, String, String>) failedHDDRecords -> {//for each failed HDD...
-                    List<Tuple2<String, String>> dataValori = new ArrayList<>();
-                    int i=numberOfDays;
-                    for (String giorno : failedHDDRecords._2()) {//...for each of the numberOfDays days presents on the dataset...
-                            dataValori.add(new Tuple2(i, giorno));//... and generate Tuple2<counter,Valori>...
-                            i--;
-                            if(i<0) break;//...if we have examined already numberOfDays days stop here and return the list
+                });
 
-                    }
-                    return dataValori.iterator();
-                }).combineByKey((String a) ->
+        //filtra in modo che siano mantenuti solo i numero seriali con almeno numberOfDays record
+        JavaPairRDD<String, ArrayList<String>> res3 = res2.filter((Tuple2<String, ArrayList<String>> tupla) -> {
+            if (tupla._2().size() >= numberOfDays) return true;
+            else return false;
+        });
+
+        //l'ArrayList<String> di records è già ordinato per data. Ora, per ogni numero seriale, si parte dal primo record
+        //(l'ultimo ad essere presente dato che è fallito) al primo record do la chiave numberOfDays, alla secodna key do la chiave
+        //numberOfDays-1 e cosi via. quando arrivo a 0 assegno la chiave 0 all  numberOfDays-esimo precendente al fallimento e mi fermo
+        //ignorando i record rimanenti
+        //l'obiettivo di ciò e poter fare il combinebykey successivo
+        //Risultato: JavaPairRDD<ID, Record of one day>
+        JavaPairRDD<String, String> res4=res3.flatMapToPair((PairFlatMapFunction<Tuple2<String, ArrayList<String>>, String, String>) failedHDDRecords -> {//for each failed HDD...
+            List<Tuple2<String, String>> dataValori = new ArrayList<>();
+            int i=numberOfDays;
+            for (String giorno : failedHDDRecords._2()) {//...for each of the numberOfDays days presents on the dataset...
+                dataValori.add(new Tuple2(i, giorno));//... and generate Tuple2<counter,Valori>...
+                i--;
+                if(i<0) break;//...if we have examined already numberOfDays days stop here and return the list
+
+            }
+            return dataValori.iterator();
+        });
+
+        //adesso è simile a come fatto per ottenere res2, la si può pensare come un group by di database che raggruppa per chiave (gli id)
+        //e ritorna una lista di record.
+        //Risultato: JavaPairRDD<ID, ArrayList<record>>
+        JavaPairRDD<String, ArrayList<String>> res5=res4.combineByKey((String a) ->
                 {//createCombiner
                     ArrayList<String> list = new ArrayList<>();
                     list.add(a);
@@ -161,8 +175,7 @@ public class Main {
                     return listA;
                 });
 
-
-        List<Tuple2<String, ArrayList<String>>> blabla = lastNumberOfDaysRecords.collect();
+        //TO BE CONTINUED
 
 
     }
