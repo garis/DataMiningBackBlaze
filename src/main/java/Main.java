@@ -1,3 +1,4 @@
+import org.apache.commons.collections.map.MultiValueMap;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -7,6 +8,7 @@ import org.apache.spark.api.java.function.PairFlatMapFunction;
 import org.apache.spark.mllib.fpm.AssociationRules;
 import org.apache.spark.mllib.fpm.FPGrowth;
 import org.apache.spark.mllib.fpm.FPGrowthModel;
+import scala.Array;
 import scala.Tuple2;
 
 import java.io.BufferedWriter;
@@ -84,7 +86,7 @@ public class Main {
             return new Tuple2(key, lista);
         });
 
-        //estraggo tutte Tuple2
+        //estraggo tutte le Tuple2
         //Result: List<Tuple2<Serial Number,Record>>
         JavaPairRDD<String, String> res1 = failedDisksBySN.flatMapToPair((PairFlatMapFunction<Tuple2<String, ArrayList<Tuple2<String, String>>>, String, String>) t -> {
             List<Tuple2<String, String>> resultFailed = new ArrayList<>();
@@ -96,8 +98,8 @@ public class Main {
         });
 
         //region DEBUG1
-        List<Tuple2<String, String>> debug1=res1.collect();
-        System.out.println("OK");
+        //List<Tuple2<String, String>> debug1 = res1.collect();
+        //System.out.println("OK");
         //endregion
 
         //region cinese di java misto spark
@@ -137,8 +139,8 @@ public class Main {
                 });
 
         //region DEBUG1
-        List<Tuple2<String, ArrayList<String>>> debug2=res2.collect();
-        System.out.println("OK");
+        //List<Tuple2<String, ArrayList<String>>> debug2 = res2.collect();
+        //System.out.println("OK");
         //endregion
 
         //filtra in modo che siano mantenuti solo i numero seriali con almeno numberOfDays record
@@ -158,27 +160,27 @@ public class Main {
         //ignorando i record rimanenti
         //l'obiettivo di ciò e poter fare il combinebykey successivo
         //Risultato: JavaPairRDD<ID, Record of one day>
-        JavaPairRDD<String, String> res4=res3.flatMapToPair((PairFlatMapFunction<Tuple2<String, ArrayList<String>>, String, String>) failedHDDRecords -> {//for each failed HDD...
-            List<Tuple2<String, String>> dataValori = new ArrayList<>();
-            int i=numberOfDays;
+        JavaPairRDD<Integer, String> res4 = res3.flatMapToPair((PairFlatMapFunction<Tuple2<String, ArrayList<String>>, Integer, String>) failedHDDRecords -> {//for each failed HDD...
+            List<Tuple2<Integer, String>> dataValori = new ArrayList<>();
+            int i = numberOfDays;
             for (String giorno : failedHDDRecords._2()) {//...for each of the numberOfDays days presents on the dataset...
-                dataValori.add(new Tuple2(i, giorno));//... and generate Tuple2<counter,Valori>...
+                dataValori.add(new Tuple2(Integer.valueOf(i), giorno));//... and generate Tuple2<counter,Valori>...
                 i--;
-                if(i<0) break;//...if we have examined already numberOfDays days stop here and return the list
+                if (i < 0) break;//...if we have examined already numberOfDays days stop here and return the list
 
             }
             return dataValori.iterator();
         });
 
         //region DEBUG4
-        List<Tuple2<String, String>> debug4=res4.collect();
-        System.out.println("OK");
+        //List<Tuple2<Integer, String>> debug4 = res4.collect();
+        //System.out.println("OK");
         //endregion
 
         //adesso è simile a come fatto per ottenere res2, la si può pensare come un group by di database che raggruppa per chiave (gli id)
         //e ritorna una lista di record.
         //Risultato: JavaPairRDD<ID, ArrayList<record>>
-        JavaPairRDD<String, ArrayList<String>> res5=res4.combineByKey((String a) ->
+        JavaPairRDD<Integer, ArrayList<String>> res5 = res4.combineByKey((String a) ->
                 {//createCombiner
                     ArrayList<String> list = new ArrayList<>();
                     list.add(a);
@@ -196,12 +198,94 @@ public class Main {
                 });
 
         //region DEBUG5
-        List<Tuple2<String, ArrayList<String>>> debug5=res5.collect();
-        System.out.println("OK");
+        //List<Tuple2<Integer, ArrayList<String>>> debug5 = res5.collect();
+        //System.out.println("OK");
         //endregion
 
         //TO BE CONTINUED
 
+        final String[] valuesAR = new String[]{"failure", "R_ERR_LOW", "R_ERR_MED", "R_ERR_HIGH", "SPIN-UP", "S&S", "REALLOC", "SEEK-ERR", "HOURS", "SPIN-ERR", "POWER-CYCL", "UNST-SEC", "ABS-ERR", "IF-ERR", "TEMP", "RETRACT", "LOAD&UNL"};
+        final int[] lowerThreshold = new int[]{1, 0, 8, 18, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+        final double[] upperThreshold = new double[]{Double.MAX_VALUE, 12, 22, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE};
+        final int[] columnIndex = new int[]{4, 6, 6, 6, 10, 12, 14, 16, 20, 22, 26, 58, 60, 62, 52, 48, 50};
 
+        Map<String, List<Integer>> dizionario = new MultiValueMap();
+
+        //region WORK IN PROGRESS
+        for (int i = numberOfDays; i >= numberOfDays - 1; i--) {
+
+            final Integer dayUnderTest = Integer.valueOf(i);
+
+            //butta via tutte le tuple che non hanno chiave == dayUnderTest
+            JavaPairRDD<Integer, ArrayList<String>> res6 = res5.filter((Tuple2<Integer, ArrayList<String>> tupla) ->
+            {
+                if (Integer.compare(dayUnderTest, tupla._1()) == 0) return true;
+                return false;
+            });
+
+            //region DEBUG6
+            //List<Tuple2<Integer, ArrayList<String>>> debug6 = res6.collect();
+            //System.out.println("OK");
+            //endregion
+
+            //converte in tante tuple2<Integer,record> da una sola Tupl2<Integer,lista di record> (una specie di contrario del group by)
+            JavaPairRDD<Integer, String> res7 = res6.flatMapToPair((PairFlatMapFunction<Tuple2<Integer, ArrayList<String>>, Integer, String>) t -> {
+                List<Tuple2<Integer, String>> resultFailed = new ArrayList<>();
+
+                for (String record : t._2()) {
+                    resultFailed.add(new Tuple2(Integer.valueOf(0), record));
+                }
+                return resultFailed.iterator();
+            });
+
+            //region DEBUG7
+            //List<Tuple2<Integer, String>> debug7 = res7.collect();
+            //System.out.println("OK");
+            //endregion
+
+            //converte in lettere per fare la ricerca di itemsets
+            JavaPairRDD<Integer, String> res8 = res7.mapToPair((Tuple2<Integer, String> tupla) ->
+            {
+                StringBuilder totale = new StringBuilder();
+                String[] valori = tupla._2().split(",");
+                for (int j = 0; j < columnIndex.length; j++) {
+                    if (!valori[columnIndex[j]].isEmpty()) {
+                        double value = Double.parseDouble(valori[columnIndex[j]]);
+                        if (value >= lowerThreshold[j] && value <= upperThreshold[j]) {
+                            totale.append(valuesAR[j]);
+                            totale.append(" ");
+                        }
+                    }
+                }
+                return new Tuple2(tupla._1(), totale.toString());
+            });
+
+            //region DEBUG8
+            //List<Tuple2<Integer, String>> debug8 = res8.collect();
+            //System.out.println("OK");
+            //endregion
+
+            JavaRDD<List<String>> transactions = res8.map(line -> Arrays.asList(line._2().split(" ")));
+
+            FPGrowth fpg = new FPGrowth()
+                    .setMinSupport(0.4)
+                    .setNumPartitions(10);
+            FPGrowthModel<String> model = fpg.run(transactions);
+
+            for (FPGrowth.FreqItemset<String> itemset : model.freqItemsets().toJavaRDD().collect()) {
+                //System.out.println("[" + itemset.javaItems() + "], " + itemset.freq() + String.format("%n"));
+                List<String> listItemsets=itemset.javaItems();
+                String[] itemsetsarray = listItemsets.toArray(new String[0]);
+                Arrays.sort(itemsetsarray);
+                String dictKey =Arrays.toString(itemsetsarray);
+                Integer value = Integer.valueOf(Long.toString(itemset.freq()));
+                if (!dizionario.containsKey(dictKey))
+                    dizionario.put(dictKey, new ArrayList<Integer>());
+                else {
+                    dizionario.get(dictKey).add(value);
+                }
+            }
+        }
+        //endregion
     }
 }
