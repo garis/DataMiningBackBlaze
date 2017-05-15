@@ -16,6 +16,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
+import java.util.function.BiConsumer;
 
 public class Main {
 
@@ -202,17 +203,16 @@ public class Main {
         //System.out.println("OK");
         //endregion
 
-        //TO BE CONTINUED
+
+        //region NEED CHECKING, remember that breakpoints works practically everywhere
 
         final String[] valuesAR = new String[]{"failure", "R_ERR_LOW", "R_ERR_MED", "R_ERR_HIGH", "SPIN-UP", "S&S", "REALLOC", "SEEK-ERR", "HOURS", "SPIN-ERR", "POWER-CYCL", "UNST-SEC", "ABS-ERR", "IF-ERR", "TEMP", "RETRACT", "LOAD&UNL"};
         final int[] lowerThreshold = new int[]{1, 0, 8, 18, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
         final double[] upperThreshold = new double[]{Double.MAX_VALUE, 12, 22, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE};
         final int[] columnIndex = new int[]{4, 6, 6, 6, 10, 12, 14, 16, 20, 22, 26, 58, 60, 62, 52, 48, 50};
 
-        Map<String, List<Integer>> dizionario = new MultiValueMap();
-
-        //region WORK IN PROGRESS
-        for (int i = numberOfDays; i >= numberOfDays - 1; i--) {
+        Map<Object,ArrayList<Integer>> dizionario = new HashMap<>();
+        for (int i = numberOfDays; i >= 0; i--) {
 
             final Integer dayUnderTest = Integer.valueOf(i);
 
@@ -273,19 +273,63 @@ public class Main {
             FPGrowthModel<String> model = fpg.run(transactions);
 
             for (FPGrowth.FreqItemset<String> itemset : model.freqItemsets().toJavaRDD().collect()) {
-                //System.out.println("[" + itemset.javaItems() + "], " + itemset.freq() + String.format("%n"));
-                List<String> listItemsets=itemset.javaItems();
+
+                //qui mette in ordine i vari elementi di un itmeset in maniera che l'ordine con cui le stringhe
+                //compaiono nell'itemset non crei itemset doppi
+                // in pratica [A, B] è lo stesso di [B, A] e qui fa in modo che:
+                //[A, B] diventi [A, B] e [B, A] diventi [A, B]
+                //utile per il valore di chiave nella HashMap dopo
+                List<String> listItemsets = itemset.javaItems();
                 String[] itemsetsarray = listItemsets.toArray(new String[0]);
                 Arrays.sort(itemsetsarray);
-                String dictKey =Arrays.toString(itemsetsarray);
+                String dictKey = Arrays.toString(itemsetsarray);
+
                 Integer value = Integer.valueOf(Long.toString(itemset.freq()));
+
+                //se è la prima volta che vedo la chiave
                 if (!dizionario.containsKey(dictKey))
-                    dizionario.put(dictKey, new ArrayList<Integer>());
-                else {
-                    dizionario.get(dictKey).add(value);
-                }
+                    if (i == numberOfDays) {//se aggiungo al primo giro del for esterno (non il foreach) inizializzo la lista
+                        dizionario.put(dictKey, new ArrayList<>());
+                    } else {//altrimenti inizializzo la lista e inserisco i giorni mancanti mettendo zeri
+                        dizionario.put(dictKey, new ArrayList<>());
+                        for (int h = numberOfDays; h > i; h--) {
+                            dizionario.get(dictKey).add(0);
+                        }
+                    }
+                dizionario.get(dictKey).add(value);
             }
+            //ora faccio un giro delle lista per mettere valori che eventualmente non erano presenti negli ultimi itemsets
+            //così mantengo la coerenza nel file .csv finale
+            dizionario.forEach((Object key, ArrayList<Integer> lista) -> {
+                if (lista.size() <= numberOfDays - dayUnderTest)
+                    lista.add(0);
+            });
         }
+
+        //scrive su file
+        //stare attenti che il csv è separato usando i punti e virgola e non le virgole
+        String filename = data_path + "andamentoIntemsets.csv";
+        File fileOutput = new File(filename);
+        if (!fileOutput.exists()) {
+            fileOutput.createNewFile();
+        }
+
+        FileWriter fw = new FileWriter(fileOutput.getAbsoluteFile(), false);
+        final BufferedWriter bw = new BufferedWriter(fw);
+
+        dizionario.forEach((Object key, ArrayList<Integer> lista) -> {
+            try {
+                bw.write(key + ";");
+                for (Integer value : lista)
+                    bw.write(value.toString() + ";");
+                bw.write(String.format("%n"));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
+
+        bw.close();
+
         //endregion
     }
 }
