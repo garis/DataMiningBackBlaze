@@ -141,7 +141,7 @@ public class Main {
 
         //region DEBUG1
         //List<Tuple2<String, ArrayList<String>>> debug2 = res2.collect();
-        //System.out.println("OK");
+        System.out.println("OK");
         //endregion
 
         //filtra in modo che siano mantenuti solo i numero seriali con almeno numberOfDays record
