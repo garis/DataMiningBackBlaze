@@ -22,7 +22,7 @@ public class Main {
 
     public static void main(String[] args) throws IOException {
         final String data_path = Utils.path;
-        final int numberOfDays = 5;
+        final int numberOfDays = 30;
 
         //initialize the Spark context in Java
         JavaSparkContext spark_context = new JavaSparkContext(new SparkConf()
@@ -38,7 +38,7 @@ public class Main {
                 org.apache.hadoop.fs.LocalFileSystem.class.getName()
         );
 
-        JavaPairRDD<String, String> textFile = spark_context.wholeTextFiles(data_path + "TESTDATASET", 400);
+        JavaPairRDD<String, String> textFile = spark_context.wholeTextFiles(data_path + "Data", 400);
 
         //first get all the Serial Number of all the failed disks
         JavaPairRDD<String, ArrayList<Tuple2<String, String>>> failedDisks = textFile.mapToPair(file ->
@@ -248,6 +248,7 @@ public class Main {
             {
                 StringBuilder totale = new StringBuilder();
                 String[] valori = tupla._2().split(",");
+                if (valori.length > 6){
                 for (int j = 0; j < columnIndex.length; j++) {
                     if (!valori[columnIndex[j]].isEmpty()) {
                         double value = Double.parseDouble(valori[columnIndex[j]]);
@@ -257,6 +258,8 @@ public class Main {
                         }
                     }
                 }
+                }
+
                 return new Tuple2(tupla._1(), totale.toString());
             });
 
