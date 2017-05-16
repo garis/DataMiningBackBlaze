@@ -1,14 +1,11 @@
-import org.apache.commons.collections.map.MultiValueMap;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.PairFlatMapFunction;
 import org.apache.spark.mllib.fpm.AssociationRules;
 import org.apache.spark.mllib.fpm.FPGrowth;
 import org.apache.spark.mllib.fpm.FPGrowthModel;
-import scala.Array;
 import scala.Tuple2;
 
 import java.io.BufferedWriter;
@@ -16,13 +13,94 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
-import java.util.function.BiConsumer;
 
 public class Main {
 
     public static void main(String[] args) throws IOException {
+        final long startTime = System.currentTimeMillis();
+        /*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        HELP:
+        sistemare la classe Utils mettendo il path corretto del dataset
+        creare la cartella (dentro al path di Utils) "AnalisiFrequenzaValori"
+        copiare dentro ad essa il file "2016-12-31.csv" del dataset
+        e tutto dovrebbe andare (ammess odi aver configurato Hadoop e Spark)
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
+
+        /*From this (see:"ContaQuantiValoriInOgniColonna.txt"):
+0,date,24471617
+1,serial_number,24471617
+2,model,24471617
+3,capacity_bytes,24471617
+4,failure,24471617
+5,smart_1_normalized,24471593
+6,smart_1_raw,24471593
+9,smart_3_normalized,24471593
+10,smart_3_raw,24471593
+11,smart_4_normalized,24471593
+12,smart_4_raw,24471593
+13,smart_5_normalized,24471593
+14,smart_5_raw,24471593
+15,smart_7_normalized,24471593
+16,smart_7_raw,24471593
+19,smart_9_normalized,24471593
+20,smart_9_raw,24471593
+21,smart_10_normalized,24471593
+22,smart_10_raw,24471593
+25,smart_12_normalized,24471593
+26,smart_12_raw,24471593
+57,smart_197_normalized,24471593
+58,smart_197_raw,24471593
+59,smart_198_normalized,24471593
+60,smart_198_raw,24471593
+61,smart_199_normalized,24471593
+62,smart_199_raw,24471593
+51,smart_194_normalized,24471342
+52,smart_194_raw,24471342
+47,smart_192_normalized,24428958
+48,smart_192_raw,24428958
+49,smart_193_normalized,24157811
+50,smart_193_raw,24157811
+
+we ignore the normalized values, date, SN, model and capacity. We obtain:
+4,failure,24471617
+6,smart_1_raw,24471593      R_ERR:      Read Error Rate
+10,smart_3_raw,24471593     SPIN-UP:    Spin-Up Time
+12,smart_4_raw,24471593     S&S:        Start/Stop Count
+14,smart_5_raw,24471593     REALLOC:    Reallocated Sectors Count
+16,smart_7_raw,24471593     SEEK-ERR:   Seek Error Rate
+20,smart_9_raw,24471593     HOURS:      Power-On Hours
+22,smart_10_raw,24471593    SPIN-ERR:   Spin Retry Count
+26,smart_12_raw,24471593    POWER-CYCL: Power Cycle Count
+58,smart_197_raw,24471593   UNST-SEC:   Current Pending Sector Count
+60,smart_198_raw,24471593   ABS-ERR:    Uncorrectable Sector Count
+62,smart_199_raw,24471593   IF-ERR:     UltraDMA CRC Error Count
+52,smart_194_raw,24471342   TEMP:       Temperature
+48,smart_192_raw,24428958   RETRACT:    Number of power-off or emergency retract cycles
+50,smart_193_raw,24157811   LOAD&UNL:   Count of load/unload cycles into head landing zone position
+         */
+
+
+        // @formatter:off
+
+        //example of Pastea's idea implementations (thresholds with overlapping boundaries) with example values:    0   1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  16  17  18  19  20  21  22 ............................
+        //final String[] valuesAR = new String[]{      "R_ERR_LOW", "R_ERR_MED", "R_ERR_HIGH"};                     |-------------------R_ERR_LOW--------------------|                      |--------------------R_ERR_HIGH-------..........
+        //final double[] lowerThreshold = new double[]{       0,           8,           18};                                                              |-----------------------R_ERR_MED------------------------|
+        //final double[] upperThreshold = new double[]{ 12,          22,          Double.MAX_VALUE};
+        //final int[] columnIndex = new int[]{          6,           6,           6};
+        //in word this means: for the sixth column we want three item:  one if the value >= 0 and <= 12
+        //                                                              one if the value >= 8 and <= 22
+        //                                                              one if the value >= 18 and <= +inf
+
+        //this give a name to the item, very useful when reading the rules
+        final String[] valuesAR = new String[]{         "failure",          "R_ERR_LOW",        "R_ERR_MED",        "R_ERR_HIGH",      "SPIN-UP",          "S&S",              "REALLOC",          "SEEK-ERR",         "HOURS",            "SPIN-ERR",         "POWER-CYCL",       "UNST-SEC",         "ABS-ERR",          "IF-ERR",           "TEMP",             "RETRACT",          "LOAD&UNL"       };
+        final double[] lowerThreshold = new double[]{          1,                  0,                  8,                  18,                1,                  1,                  1,                  1,                  1,                  1,                  1,                  1,                  1,                  1,                  1,                  1,                  1               };
+        final double[] upperThreshold = new double[]{    Double.MAX_VALUE,   12,                 22,                 Double.MAX_VALUE,  Double.MAX_VALUE,   Double.MAX_VALUE,   Double.MAX_VALUE,   Double.MAX_VALUE,   Double.MAX_VALUE,   Double.MAX_VALUE,   Double.MAX_VALUE,   Double.MAX_VALUE,   Double.MAX_VALUE,   Double.MAX_VALUE,   Double.MAX_VALUE,   Double.MAX_VALUE,   Double.MAX_VALUE};
+        final int[] columnIndex = new int[]{             4,                  6,                  6,                  6,                 10,                 12,                 14,                 16,                 20,                 22,                 26,                 58,                 60,                 62,                 52,                 48,                 50              };
+        //columnIndex is the list of interesting columns
+        // @formatter:on
         final String data_path = Utils.path;
-        final int numberOfDays = 30;
+
+        System.out.println("Data path: " + data_path);
 
         //initialize the Spark context in Java
         JavaSparkContext spark_context = new JavaSparkContext(new SparkConf()
@@ -38,301 +116,245 @@ public class Main {
                 org.apache.hadoop.fs.LocalFileSystem.class.getName()
         );
 
-        JavaPairRDD<String, String> textFile = spark_context.wholeTextFiles(data_path + "Data", 400);
+        //now we want all failed disks on on file
+        //if the file doesn't exist (or it is the first run of the code) make a new one
 
-        //first get all the Serial Number of all the failed disks
-        JavaPairRDD<String, ArrayList<Tuple2<String, String>>> failedDisks = textFile.mapToPair(file ->
-        {
-            String key = "-1";
-            String[] dischi = file._2().split(String.format("%n"));
-            ArrayList<Tuple2<String, ArrayList<String>>> lista = new ArrayList<>();
-            for (String disco : dischi) {
-                key = "0";
-                String[] valori = disco.split(",");
-                if (valori[4].compareTo("1") == 0) {
-                    lista.add(new Tuple2("1", valori[1]));  //take only the Serial Number
-                }
-            }
-            return new Tuple2(key, lista);
-        });
+        String filename = data_path + "AnalisiFrequenzaValori/failedDisks.csv";
+        File fileOutput = new File(filename);
+        if (!fileOutput.exists()) {
+            fileOutput.createNewFile();
+            //on all the dataset (so for each of the 366 days of the dataset) load the .csv file...
+            JavaPairRDD<String, String> textFile = spark_context.wholeTextFiles(data_path + "Data", 400);
 
-        //extract all the Tuple2
-        JavaPairRDD<String, String> failedDisksSNs = failedDisks.flatMapToPair((PairFlatMapFunction<Tuple2<String, ArrayList<Tuple2<String, String>>>, String, String>) t -> {
-            List<Tuple2<String, String>> resultFailed = new ArrayList<>();
-
-            for (Tuple2<String, String> lista : t._2()) {
-                resultFailed.add(new Tuple2(lista._1(), lista._2()));
-            }
-            return resultFailed.iterator();
-        });
-
-        List<Tuple2<String, String>> result = failedDisksSNs.collect();
-        List<String> listOfSN = new ArrayList<>();
-        for (Tuple2<String, String> tupla : result) {
-            listOfSN.add(tupla._2());
-        }
-
-        //CON RECORD INTENDO LA SINGOLA RIGA DI UN FILE .CSV
-        //ottiene tutti i records dei dischi falliti
-        JavaPairRDD<String, ArrayList<Tuple2<String, String>>> failedDisksBySN = textFile.mapToPair(file ->
-        {
-            String key = "-1";
-            String[] dischi = file._2().split(String.format("%n"));
-            ArrayList<Tuple2<String, ArrayList<String>>> lista = new ArrayList<>();
-            for (String disco : dischi) {
-                String[] valori = disco.split(",");
-                if (listOfSN.contains(valori[1]))
-                    lista.add(new Tuple2(valori[1], disco));
-            }
-            return new Tuple2(key, lista);
-        });
-
-        //estraggo tutte le Tuple2
-        //Result: List<Tuple2<Serial Number,Record>>
-        JavaPairRDD<String, String> res1 = failedDisksBySN.flatMapToPair((PairFlatMapFunction<Tuple2<String, ArrayList<Tuple2<String, String>>>, String, String>) t -> {
-            List<Tuple2<String, String>> resultFailed = new ArrayList<>();
-
-            for (Tuple2<String, String> lista : t._2()) {
-                resultFailed.add(new Tuple2(lista._1(), lista._2()));
-            }
-            return resultFailed.iterator();
-        });
-
-        //region DEBUG1
-        //List<Tuple2<String, String>> debug1 = res1.collect();
-        //System.out.println("OK");
-        //endregion
-
-        //region cinese di java misto spark
-        //public <C> JavaPairRDD<K,C> combineByKey(Function<V,C> createCombiner,
-        //        Function2<C,V,C> mergeValue,
-        //        Function2<C,C,C> mergeCombiners)
-
-        //Class	                        Function Type
-        //Function<T, R>	            T => R
-        //DoubleFunction<T>	            T => Double
-        //PairFunction<T, K, V>	        T => Tuple2<K, V>
-        //FlatMapFunction<T, R>	        T => Iterable<R>
-        //DoubleFlatMapFunction<T>	    T => Iterable<Double>
-        //PairFlatMapFunction<T, K, V>	T => Iterable<Tuple2<K, V>>
-        //Function2<T1, T2, R>	        T1, T2 => R (function of two arguments)
-        //endregion
-        //raggruppa per numero seriale andando a formare una lista di record per ogni numero seriale
-        //un po' come un group by di database raggruppo per numero seriale ottenendo una lista di record
-        //result List<Tuple2<SerialNumber, ArrayList<Record of days>>>
-        JavaPairRDD<String, ArrayList<String>> res2 = res1.combineByKey((String a) ->
-                {//createCombiner
-                    ArrayList<String> list = new ArrayList<>();
-                    list.add(a);
-                    return list;
-                },
-                (ArrayList<String> listA, String str) ->
-                {//mergeValue
-                    listA.add(str);
-                    return listA;
-                }, (ArrayList<String> listA, ArrayList<String> listB) ->
-                {//mergeCombiners
-                    for (String str : listB)
-                        listA.add(str);
-                    //inefficient but simple
-                    listA.sort((String s, String t1) -> t1.compareTo(s));//inverse order so the recent record are on the top of the list
-                    return listA;
-                });
-
-        //region DEBUG1
-        //List<Tuple2<String, ArrayList<String>>> debug2 = res2.collect();
-        System.out.println("OK");
-        //endregion
-
-        //filtra in modo che siano mantenuti solo i numero seriali con almeno numberOfDays record
-        JavaPairRDD<String, ArrayList<String>> res3 = res2.filter((Tuple2<String, ArrayList<String>> tupla) -> {
-            if (tupla._2().size() >= numberOfDays) return true;
-            else return false;
-        });
-
-        //region DEBUG4
-        //nothing special
-        //endregion
-
-
-        //l'ArrayList<String> di records è già ordinato per data. Ora, per ogni numero seriale, si parte dal primo record
-        //(l'ultimo ad essere presente dato che è fallito) al primo record do la chiave numberOfDays, alla secodna key do la chiave
-        //numberOfDays-1 e cosi via. quando arrivo a 0 assegno la chiave 0 all  numberOfDays-esimo precendente al fallimento e mi fermo
-        //ignorando i record rimanenti
-        //l'obiettivo di ciò e poter fare il combinebykey successivo
-        //Risultato: JavaPairRDD<ID, Record of one day>
-        JavaPairRDD<Integer, String> res4 = res3.flatMapToPair((PairFlatMapFunction<Tuple2<String, ArrayList<String>>, Integer, String>) failedHDDRecords -> {//for each failed HDD...
-            List<Tuple2<Integer, String>> dataValori = new ArrayList<>();
-            int i = numberOfDays;
-            for (String giorno : failedHDDRecords._2()) {//...for each of the numberOfDays days presents on the dataset...
-                dataValori.add(new Tuple2(Integer.valueOf(i), giorno));//... and generate Tuple2<counter,Valori>...
-                i--;
-                if (i < 0) break;//...if we have examined already numberOfDays days stop here and return the list
-
-            }
-            return dataValori.iterator();
-        });
-
-        //region DEBUG4
-        //List<Tuple2<Integer, String>> debug4 = res4.collect();
-        //System.out.println("OK");
-        //endregion
-
-        //adesso è simile a come fatto per ottenere res2, la si può pensare come un group by di database che raggruppa per chiave (gli id)
-        //e ritorna una lista di record.
-        //Risultato: JavaPairRDD<ID, ArrayList<record>>
-        JavaPairRDD<Integer, ArrayList<String>> res5 = res4.combineByKey((String a) ->
-                {//createCombiner
-                    ArrayList<String> list = new ArrayList<>();
-                    list.add(a);
-                    return list;
-                },
-                (ArrayList<String> listA, String str) ->
-                {//mergeValue
-                    listA.add(str);
-                    return listA;
-                }, (ArrayList<String> listA, ArrayList<String> listB) ->
-                {//mergeCombiners
-                    for (String str : listB)
-                        listA.add(str);
-                    return listA;
-                });
-
-        //region DEBUG5
-        //List<Tuple2<Integer, ArrayList<String>>> debug5 = res5.collect();
-        //System.out.println("OK");
-        //endregion
-
-
-        //region NEED CHECKING, remember that breakpoints works practically everywhere
-
-        final String[] valuesAR = new String[]{"failure", "R_ERR_LOW", "R_ERR_MED", "R_ERR_HIGH", "SPIN-UP", "S&S", "REALLOC", "SEEK-ERR", "HOURS", "SPIN-ERR", "POWER-CYCL", "UNST-SEC", "ABS-ERR", "IF-ERR", "TEMP", "RETRACT", "LOAD&UNL"};
-        final int[] lowerThreshold = new int[]{1, 0, 8, 18, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-        final double[] upperThreshold = new double[]{Double.MAX_VALUE, 12, 22, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE};
-        final int[] columnIndex = new int[]{4, 6, 6, 6, 10, 12, 14, 16, 20, 22, 26, 58, 60, 62, 52, 48, 50};
-
-        Map<Object,ArrayList<Integer>> dizionario = new HashMap<>();
-        for (int i = numberOfDays; i >= 0; i--) {
-
-            final Integer dayUnderTest = Integer.valueOf(i);
-
-            //butta via tutte le tuple che non hanno chiave == dayUnderTest
-            JavaPairRDD<Integer, ArrayList<String>> res6 = res5.filter((Tuple2<Integer, ArrayList<String>> tupla) ->
+            //for each day (so for each .csv file) extract all the failed hard drive in a list of tuple, a tuple2 for each disk
+            //example: Day 1: Tuple2(0,List(Tuple2(1,...),Tuple2(1,...),...)
+            //
+            //maybe the next diagram is a bit more clear:
+            //Day 1 --> Tuple2(0,List)
+            //                    |
+            //                    |----Tuple2(1,(column_0,column_1,...))
+            //                    |----Tuple2(1,(column_0,column_1,...))
+            //                    |----Tuple2(1,(column_0,column_1,...))
+            JavaPairRDD<String, ArrayList<Tuple2<String, String>>> failedGroupByDay = textFile.mapToPair(file ->
             {
-                if (Integer.compare(dayUnderTest, tupla._1()) == 0) return true;
-                return false;
+                String key = "-1";
+                String[] dischi = file._2().split(String.format("%n"));
+                ArrayList<Tuple2<String, ArrayList<String>>> lista = new ArrayList<>();
+                for (String disco : dischi) {
+                    key = "0";
+                    String[] valori = disco.split(",");
+                    if (valori[4].compareTo("1") == 0) {
+                        lista.add(new Tuple2("1", disco));
+                    }
+                }
+                return new Tuple2(key, lista);
             });
 
-            //region DEBUG6
-            //List<Tuple2<Integer, ArrayList<String>>> debug6 = res6.collect();
-            //System.out.println("OK");
-            //endregion
+            //now we want a tuple(key,value) for each failed hard drive
+            //so we extract for every day all the failed disks and with that
+            //we create a Tuple(key,values) for every disk
+            //diagram:
+            //from this:
+            //Day 1 --> Tuple2(0,List)
+            //                    |
+            //                    |----Tuple2(1,(column_0,column_1,...))
+            //                    |----Tuple2(1,(column_0,column_1,...))
+            //                    |----Tuple2(1,(column_0,column_1,...))
+            //to this:
+            //Tuple2(1,(column_0,column_1,...))
+            //Tuple2(1,(column_0,column_1,...))
+            //Tuple2(1,(column_0,column_1,...))
+            //
+            //we extract the tuples from the tuple of each day
+            JavaPairRDD<String, String> failedDisks = failedGroupByDay.flatMapToPair((PairFlatMapFunction<Tuple2<String, ArrayList<Tuple2<String, String>>>, String, String>) t -> {
+                List<Tuple2<String, String>> resultFailed = new ArrayList<>();
 
-            //converte in tante tuple2<Integer,record> da una sola Tupl2<Integer,lista di record> (una specie di contrario del group by)
-            JavaPairRDD<Integer, String> res7 = res6.flatMapToPair((PairFlatMapFunction<Tuple2<Integer, ArrayList<String>>, Integer, String>) t -> {
-                List<Tuple2<Integer, String>> resultFailed = new ArrayList<>();
-
-                for (String record : t._2()) {
-                    resultFailed.add(new Tuple2(Integer.valueOf(0), record));
+                for (Tuple2<String, String> lista : t._2()) {
+                    resultFailed.add(new Tuple2(lista._1(), lista._2()));
                 }
                 return resultFailed.iterator();
             });
 
-            //region DEBUG7
-            //List<Tuple2<Integer, String>> debug7 = res7.collect();
-            //System.out.println("OK");
-            //endregion
+            //for speed we write the result to a file so the next time we gain speed
+            //because we don't need anymore to analyze the entire dataset
+            List<Tuple2<String, String>> resultFailed = failedDisks.collect();
 
-            //converte in lettere per fare la ricerca di itemsets
-            JavaPairRDD<Integer, String> res8 = res7.mapToPair((Tuple2<Integer, String> tupla) ->
-            {
-                StringBuilder totale = new StringBuilder();
-                String[] valori = tupla._2().split(",");
-                if (valori.length > 6){
-                for (int j = 0; j < columnIndex.length; j++) {
-                    if (!valori[columnIndex[j]].isEmpty()) {
-                        double value = Double.parseDouble(valori[columnIndex[j]]);
-                        if (value >= lowerThreshold[j] && value <= upperThreshold[j]) {
-                            totale.append(valuesAR[j]);
-                            totale.append(" ");
-                        }
-                    }
+            FileWriter fw = new FileWriter(fileOutput.getAbsoluteFile(), false);
+            BufferedWriter bw = new BufferedWriter(fw);
+
+            for (Tuple2<String, String> tupla : resultFailed) {
+                if (tupla._1().compareTo("-1") != 0) {
+                    bw.write(tupla._2());
+                    bw.write(String.format("%n"));
                 }
-                }
-
-                return new Tuple2(tupla._1(), totale.toString());
-            });
-
-            //region DEBUG8
-            //List<Tuple2<Integer, String>> debug8 = res8.collect();
-            //System.out.println("OK");
-            //endregion
-
-            JavaRDD<List<String>> transactions = res8.map(line -> Arrays.asList(line._2().split(" ")));
-
-            FPGrowth fpg = new FPGrowth()
-                    .setMinSupport(0.4)
-                    .setNumPartitions(10);
-            FPGrowthModel<String> model = fpg.run(transactions);
-
-            for (FPGrowth.FreqItemset<String> itemset : model.freqItemsets().toJavaRDD().collect()) {
-
-                //qui mette in ordine i vari elementi di un itmeset in maniera che l'ordine con cui le stringhe
-                //compaiono nell'itemset non crei itemset doppi
-                // in pratica [A, B] è lo stesso di [B, A] e qui fa in modo che:
-                //[A, B] diventi [A, B] e [B, A] diventi [A, B]
-                //utile per il valore di chiave nella HashMap dopo
-                List<String> listItemsets = itemset.javaItems();
-                String[] itemsetsarray = listItemsets.toArray(new String[0]);
-                Arrays.sort(itemsetsarray);
-                String dictKey = Arrays.toString(itemsetsarray);
-
-                Integer value = Integer.valueOf(Long.toString(itemset.freq()));
-
-                //se è la prima volta che vedo la chiave
-                if (!dizionario.containsKey(dictKey))
-                    if (i == numberOfDays) {//se aggiungo al primo giro del for esterno (non il foreach) inizializzo la lista
-                        dizionario.put(dictKey, new ArrayList<>());
-                    } else {//altrimenti inizializzo la lista e inserisco i giorni mancanti mettendo zeri
-                        dizionario.put(dictKey, new ArrayList<>());
-                        for (int h = numberOfDays; h > i; h--) {
-                            dizionario.get(dictKey).add(0);
-                        }
-                    }
-                dizionario.get(dictKey).add(value);
             }
-            //ora faccio un giro delle lista per mettere valori che eventualmente non erano presenti negli ultimi itemsets
-            //così mantengo la coerenza nel file .csv finale
-            dizionario.forEach((Object key, ArrayList<Integer> lista) -> {
-                if (lista.size() <= numberOfDays - dayUnderTest)
-                    lista.add(0);
-            });
+            bw.write(String.format("%n"));
+            bw.close();
         }
 
-        //scrive su file
-        //stare attenti che il csv è separato usando i punti e virgola e non le virgole
-        String filename = data_path + "andamentoIntemsets.csv";
-        File fileOutput = new File(filename);
+        //now the analysis
+
+        //healthy disks
+
+        //load the file
+        JavaRDD<String> textFileLastDay = spark_context.textFile(data_path + "AnalisiFrequenzaValori/lastDay.csv", 1);
+
+        //for each line make the tuple
+        //each tuple rappresent a disk
+        //but we load only the columns that we want based on the columnIndex, lowerThreshold and valuesAR
+        JavaPairRDD<String, ArrayList<String>> healthy = textFileLastDay.mapToPair(riga ->
+        {
+            String key = "0";
+            String[] valori = riga.split(",");
+            ArrayList<String> lista = new ArrayList<>();
+            //if not failed
+            if (valori[4].compareTo("0") == 0) {
+                for (int i = 0; i < columnIndex.length; i++) {
+                    if (!valori[columnIndex[i]].isEmpty()) {
+                        double value = Double.parseDouble(valori[columnIndex[i]]);
+                        if (value >= lowerThreshold[i] && value <= upperThreshold[i])
+                            lista.add(valuesAR[i]);
+                    }
+                }
+            } else
+                key = "-1";
+            return new Tuple2(key, lista);
+        });
+
+        //and now we buffer the result (the filtered files) in a file on disk
+        //this is a bit useless because we do not gain a lot of perfomance but is great for debug
+        List<Tuple2<String, ArrayList<String>>> result = healthy.collect();
+
+        filename = data_path + "forFrequentPatternMiningHEALTHY.txt";
+        fileOutput = new File(filename);
         if (!fileOutput.exists()) {
             fileOutput.createNewFile();
         }
 
         FileWriter fw = new FileWriter(fileOutput.getAbsoluteFile(), false);
-        final BufferedWriter bw = new BufferedWriter(fw);
+        BufferedWriter bw = new BufferedWriter(fw);
 
-        dizionario.forEach((Object key, ArrayList<Integer> lista) -> {
-            try {
-                bw.write(key + ";");
-                for (Integer value : lista)
-                    bw.write(value.toString() + ";");
+        for (Tuple2<String, ArrayList<String>> tupla : result) {
+            if (tupla._1().compareTo("-1") != 0) {
+                for (String lettera : tupla._2())
+                    bw.write(lettera + " ");
                 bw.write(String.format("%n"));
-            } catch (IOException e) {
-                e.printStackTrace();
             }
+        }
+        bw.write(String.format("%n"));
+        bw.close();
+
+        //failed disks
+
+        //same thing as above
+        JavaRDD<String> textFileFailed = spark_context.textFile(data_path + "AnalisiFrequenzaValori/failedDisks.csv", 1);
+
+        JavaPairRDD<String, ArrayList<String>> failed = textFileFailed.mapToPair(riga ->
+        {
+            String key = "0";
+            String[] valori = riga.split(",");
+            ArrayList<String> lista = new ArrayList<>();
+            //if failed check
+            //N.B: verifies that there are at least some valid values because some records have small number of values (like 6)
+            if (valori.length > 6 && valori[4].compareTo("1") == 0) {
+                for (int i = 0; i < columnIndex.length; i++) {
+                    if (!valori[columnIndex[i]].isEmpty()) {
+                        double value = Double.parseDouble(valori[columnIndex[i]]);
+                        if (value >= lowerThreshold[i] && value <= upperThreshold[i])
+                            lista.add(valuesAR[i]);
+                    }
+                }
+            } else
+                key = "-1";
+            return new Tuple2(key, lista);
         });
+
+        List<Tuple2<String, ArrayList<String>>> resultF = failed.collect();
+
+        filename = data_path + "forFrequentPatternMiningFAILED.txt";
+        fileOutput = new File(filename);
+        if (!fileOutput.exists()) {
+            fileOutput.createNewFile();
+        }
+
+        fw = new FileWriter(fileOutput.getAbsoluteFile(), false); // creating fileWriter object with the file
+        bw = new BufferedWriter(fw); // creating bufferWriter which is used to write the content into the file
+
+        for (Tuple2<String, ArrayList<String>> tupla : resultF) {
+            if (tupla._1().compareTo("-1") != 0) {
+                for (String lettera : tupla._2())
+                    bw.write(lettera + " ");
+                bw.write(String.format("%n"));
+            }
+        }
+        bw.write(String.format("%n"));
+        bw.close();
+
+
+        //mining
+        //really not much to say
+        //pretty much copy and paste from the documentation
+
+        JavaRDD<String> data = spark_context.textFile(data_path + "forFrequentPatternMiningFAILED.txt");
+
+        JavaRDD<List<String>> transactions = data.map(line -> Arrays.asList(line.split(" ")));
+
+        FPGrowth fpg = new FPGrowth()
+                .setMinSupport(0.4)
+                .setNumPartitions(10);
+        FPGrowthModel<String> model = fpg.run(transactions);
+
+        filename = data_path + "resultFrequentPatternMiningFAILED.csv";
+        fileOutput = new File(filename);
+        if (!fileOutput.exists()) {
+            fileOutput.createNewFile();
+        }
+
+        fw = new FileWriter(fileOutput.getAbsoluteFile(), false); // creating fileWriter object with the file
+        bw = new BufferedWriter(fw); // creating bufferWriter which is used to write the content into the file
+
+        for (FPGrowth.FreqItemset<String> itemset : model.freqItemsets().toJavaRDD().collect()) {
+            bw.write("[" + itemset.javaItems() + "], " + itemset.freq()+String.format("%n"));
+        }
+        bw.close();
+
+        //for (AssociationRules.Rule<String> rule
+        //        : model.generateAssociationRules(minConfidence).toJavaRDD().collect()) {
+        //    bw.write(rule.javaAntecedent() + ", " + rule.javaConsequent() + ", " + rule.confidence() + ", " + String.format("%n"));
+        //}
+        //bw.close();
+
+        data = spark_context.textFile(data_path + "forFrequentPatternMiningHEALTHY.txt");
+
+        transactions = data.map(line -> Arrays.asList(line.split(" ")));
+
+        fpg = new FPGrowth()
+                .setMinSupport(0.4)
+                .setNumPartitions(10);
+        model = fpg.run(transactions);
+
+        filename = data_path + "resultFrequentPatternMiningHEALTHY.csv";
+        fileOutput = new File(filename);
+        if (!fileOutput.exists()) {
+            fileOutput.createNewFile();
+        }
+
+        fw = new FileWriter(fileOutput.getAbsoluteFile(), false); // creating fileWriter object with the file
+        bw = new BufferedWriter(fw); // creating bufferWriter which is used to write the content into the file
+
+        for (FPGrowth.FreqItemset<String> itemset : model.freqItemsets().toJavaRDD().collect()) {
+            bw.write("[" + itemset.javaItems() + "], " + itemset.freq()+String.format("%n"));
+        }
 
         bw.close();
 
-        //endregion
+        //for (AssociationRules.Rule<String> rule
+        //        : model.generateAssociationRules(minConfidence).toJavaRDD().collect()) {
+        //    bw.write(rule.javaAntecedent() + ", " + rule.javaConsequent() + ", " + rule.confidence() + ", " + String.format("%n"));
+        //}
+        //bw.close();
+
+        final long endTime = System.currentTimeMillis();
+        System.out.println("Total execution time: " + (endTime - startTime));
     }
 }
