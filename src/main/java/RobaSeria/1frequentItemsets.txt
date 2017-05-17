@@ -84,7 +84,7 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
 
         //example of Pastea's idea implementations (thresholds with overlapping boundaries) with example values:    0   1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  16  17  18  19  20  21  22 ............................
         //final String[] valuesAR = new String[]{      "R_ERR_LOW", "R_ERR_MED", "R_ERR_HIGH"};                     |-------------------R_ERR_LOW--------------------|                      |--------------------R_ERR_HIGH-------..........
-        //final int[] lowerThreshold = new int[]{       0,           8,           18};                                                              |-----------------------R_ERR_MED------------------------|
+        //final double[] lowerThreshold = new double[]{       0,           8,           18};                                                              |-----------------------R_ERR_MED------------------------|
         //final double[] upperThreshold = new double[]{ 12,          22,          Double.MAX_VALUE};
         //final int[] columnIndex = new int[]{          6,           6,           6};
         //in word this means: for the sixth column we want three item:  one if the value >= 0 and <= 12
@@ -92,10 +92,10 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
         //                                                              one if the value >= 18 and <= +inf
 
         //this give a name to the item, very useful when reading the rules
-        final String[] valuesAR = new String[]{         "failure",          "R_ERR_LOW",        "R_ERR_MED",        "R_ERR_HIGH",      "SPIN-UP",          "S&S",              "REALLOC",          "SEEK-ERR",         "HOURS",            "SPIN-ERR",         "POWER-CYCL",       "UNST-SEC",         "ABS-ERR",          "IF-ERR",           "TEMP",             "RETRACT",          "LOAD&UNL"       };
-        final int[] lowerThreshold = new int[]{          1,                  0,                  8,                  18,                1,                  1,                  1,                  1,                  1,                  1,                  1,                  1,                  1,                  1,                  1,                  1,                  1               };
-        final double[] upperThreshold = new double[]{    Double.MAX_VALUE,   12,                 22,                 Double.MAX_VALUE,  Double.MAX_VALUE,   Double.MAX_VALUE,   Double.MAX_VALUE,   Double.MAX_VALUE,   Double.MAX_VALUE,   Double.MAX_VALUE,   Double.MAX_VALUE,   Double.MAX_VALUE,   Double.MAX_VALUE,   Double.MAX_VALUE,   Double.MAX_VALUE,   Double.MAX_VALUE,   Double.MAX_VALUE};
-        final int[] columnIndex = new int[]{             4,                  6,                  6,                  6,                 10,                 12,                 14,                 16,                 20,                 22,                 26,                 58,                 60,                 62,                 52,                 48,                 50              };
+        final String[] valuesAR = new String[]{         "R_ERR",              "SPIN-UP",          "S&S",              "REALLOC_MEDIUM",     "REALLOC_HIGH",      "HOURS",             "SPIN_ERR",          "POWER-CYCL_MEDIUM",    "POWER-CYCL_HIGH",       "RETRACT_MEDIUM",   "RETRACT_HIGH",      "LOAD&UNL",        "UNST-SEC_MEDIUM",   "UNST-SEC_HIGH",       "ABS-ERR_MEDIUM",    "ABS-ERR_HIGH"};
+        final double[] lowerThreshold = new double[]{    16,                  3500,               50000,              30,                   60,                  40000,               3,                   100,                     250,                    100,                250,                 400000,            10,                  40,                    10,                  40};
+        final double[] upperThreshold = new double[]{    Double.MAX_VALUE,    Double.MAX_VALUE,   Double.MAX_VALUE,   60,                   Double.MAX_VALUE,    Double.MAX_VALUE,     Double.MAX_VALUE,    500,                     Double.MAX_VALUE,       500,                Double.MAX_VALUE,    Double.MAX_VALUE,  40,                  Double.MAX_VALUE,      40,                  Double.MAX_VALUE};
+        final int[] columnIndex = new int[]{             6,                   10,                 12,                 14,                   14,                  20,                  22,                  26,                      26,                     48,                 48,                  50,                58,                  58,                    60,                  60};
         //columnIndex is the list of interesting columns
         // @formatter:on
         final String data_path = Utils.path;
@@ -107,6 +107,7 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
                 .setAppName("Spark Count")
                 .setMaster("local")
         );
+
 
         //fix filesystem errors when using java .jar execution
         spark_context.hadoopConfiguration().set("fs.hdfs.impl",
@@ -143,7 +144,7 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
                 for (String disco : dischi) {
                     key = "0";
                     String[] valori = disco.split(",");
-                    if (valori[4].compareTo("1") == 0) {
+                    if (valori.length >4 && valori[4].compareTo("1") == 0) {
                         lista.add(new Tuple2("1", disco));
                     }
                 }
@@ -300,7 +301,7 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
         JavaRDD<List<String>> transactions = data.map(line -> Arrays.asList(line.split(" ")));
 
         FPGrowth fpg = new FPGrowth()
-                .setMinSupport(0.4)
+                .setMinSupport(0.1)
                 .setNumPartitions(10);
         FPGrowthModel<String> model = fpg.run(transactions);
 
@@ -329,7 +330,7 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
         transactions = data.map(line -> Arrays.asList(line.split(" ")));
 
         fpg = new FPGrowth()
-                .setMinSupport(0.4)
+                .setMinSupport(0.1)
                 .setNumPartitions(10);
         model = fpg.run(transactions);
 
