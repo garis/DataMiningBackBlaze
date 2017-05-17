@@ -179,21 +179,42 @@ public class Main {
         }
 
         //Printing strings (kinda) ready to be copy-pasted, just delete the last comma
+        //WARNING: F'ing gross & messy, like, Filthy Frank's hair cake gross.
+        //Names
+        final int mode=-1; //Change -1 to 0 to remove the first threshold (from 0 to x)
+        final String finalString = "Double.MAX_VALUE";
         System.out.print("{");
         for(int i = 0; i<columnIndex.length; i++)
         {
-            for (int o = 0; o < NUMBERCLUSTER - 1; o++) //Change this to remove the first threshold (from 0 to x)
+            for (int o = mode; o < NUMBERCLUSTER-1; o++)
             {
-                System.out.print("\"" + valuesAR[i] + "_" + o + "\",");
+                System.out.print("\"" + valuesAR[i] + "_" + ((int)(o+1)) + "\",\t\t");
             }
         }
         System.out.println("}");
+        //Thresholds (lower)
         System.out.print("{");
         for(int i = 0; i<columnIndex.length; i++)
         {
-            for (int o = 0; o < NUMBERCLUSTER - 1; o++) //Change this to remove the first threshold (from 0 to x)
+            for (int o = mode; o < NUMBERCLUSTER-1; o++)
             {
-                System.out.print(soglieInt[i][o] + ",");
+                if(o<0)
+                    System.out.print("0,\t\t");
+                else
+                    System.out.print(soglieInt[i][o] + ",\t\t");
+            }
+        }
+        System.out.println("}");
+        //Thresholds (Higher)
+        System.out.print("{");
+        for(int i = 0; i<columnIndex.length; i++)
+        {
+            for (int o = mode+1; o <= NUMBERCLUSTER-1; o++)
+            {
+                if(o==(NUMBERCLUSTER-1))
+                    System.out.print(finalString + ",\t\t");
+                else
+                    System.out.print(soglieInt[i][o] + ",\t\t");
             }
         }
         System.out.println("}");
