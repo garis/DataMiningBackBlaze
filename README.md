@@ -30,14 +30,12 @@ https://www.backblaze.com/blog/hard-drive-reliability-stats-q1-2016/
 
 **Dataset**
 
- 1. https://f001.backblaze.com/file/Backblaze-Hard-Drive-Data/data_Q1_2016.zip
- 2. https://f001.backblaze.com/file/Backblaze-Hard-Drive-Data/data_Q2_2016.zip
- 3. https://f001.backblazeb2.com/file/Backblaze-Hard-Drive-Data/data_Q3_2016.zip
- 4. https://f001.backblazeb2.com/file/Backblaze-Hard-Drive-Data/data_Q4_2016.zip
-
-MAYBE
-
- 5. https://f001.backblazeb2.com/file/Backblaze-Hard-Drive-Data/data_2015.zip
+ 1. https://f001.backblazeb2.com/file/Backblaze-Hard-Drive-Data/data_2015.zip
+ 2. https://f001.backblaze.com/file/Backblaze-Hard-Drive-Data/data_Q1_2016.zip
+ 3. https://f001.backblaze.com/file/Backblaze-Hard-Drive-Data/data_Q2_2016.zip
+ 4. https://f001.backblazeb2.com/file/Backblaze-Hard-Drive-Data/data_Q3_2016.zip
+ 5. https://f001.backblazeb2.com/file/Backblaze-Hard-Drive-Data/data_Q4_2016.zip
+ 6. https://f001.backblaze.com/file/Backblaze-Hard-Drive-Data/data_Q1_2017.zip
 
 ----------
 
