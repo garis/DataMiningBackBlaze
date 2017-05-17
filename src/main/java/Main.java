@@ -92,10 +92,10 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
         //                                                              one if the value >= 18 and <= +inf
 
         //this give a name to the item, very useful when reading the rules
-        final String[] valuesAR = new String[]{         "R_ERR",              "SPIN-UP",          "S&S",              "REALLOC_MEDIUM",     "REALLOC_HIGH",      "HOURS",             "SPIN_ERR",          "POWER-CYCL_MEDIUM",    "POWER-CYCL_HIGH",       "RETRACT_MEDIUM",   "RETRACT_HIGH",      "LOAD&UNL",        "UNST-SEC_MEDIUM",   "UNST-SEC_HIGH",       "ABS-ERR_MEDIUM",    "ABS-ERR_HIGH"};
-        final double[] lowerThreshold = new double[]{    16,                  3500,               50000,              30,                   60,                  40000,               3,                   100,                     250,                    100,                250,                 400000,            10,                  40,                    10,                  40};
-        final double[] upperThreshold = new double[]{    Double.MAX_VALUE,    Double.MAX_VALUE,   Double.MAX_VALUE,   60,                   Double.MAX_VALUE,    Double.MAX_VALUE,     Double.MAX_VALUE,    500,                     Double.MAX_VALUE,       500,                Double.MAX_VALUE,    Double.MAX_VALUE,  40,                  Double.MAX_VALUE,      40,                  Double.MAX_VALUE};
-        final int[] columnIndex = new int[]{             6,                   10,                 12,                 14,                   14,                  20,                  22,                  26,                      26,                     48,                 48,                  50,                58,                  58,                    60,                  60};
+        final String[] valuesAR = new String[]{         "R_ERR",              "SPIN-UP",          "S&S",              "REALLOC_MEDIUM",     "REALLOC_HIGH",      "HOURS",             "SPIN_ERR",          "POWER-CYCL_MEDIUM",    "POWER-CYCL_HIGH",      "RETRACT_MEDIUM",  "RETRACT_HIGH",      "LOAD&UNL",        "UNST-SEC_MEDIUM",   "UNST-SEC_HIGH",       "ABS-ERR_MEDIUM",    "ABS-ERR_HIGH"};
+        final double[] lowerThreshold = new double[]{    16,                  1000,               40,                 15,                   40,                  15000,               3,                   20,                     50,                     15,                30,                  20000,             10,                  40,                    10,                  40};
+        final double[] upperThreshold = new double[]{    Double.MAX_VALUE,    Double.MAX_VALUE,   Double.MAX_VALUE,   40,                   Double.MAX_VALUE,    Double.MAX_VALUE,    Double.MAX_VALUE,    50,                     Double.MAX_VALUE,       30,                Double.MAX_VALUE,    Double.MAX_VALUE,  40,                  Double.MAX_VALUE,      40,                  Double.MAX_VALUE};
+        final int[] columnIndex = new int[]{             6,                   10,                 12,                 14,                   14,                  20,                  22,                  26,                     26,                     48,                48,                  50,                58,                  58,                    60,                  60};
         //columnIndex is the list of interesting columns
         // @formatter:on
         final String data_path = Utils.path;
@@ -119,7 +119,7 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
         //now we want all failed disks on on file
         //if the file doesn't exist (or it is the first run of the code) make a new one
 
-        String filename = data_path + "AnalisiFrequenzaValori/failedDisks.csv";
+        String filename = data_path + "AnalisiFrequenzaValori\\failedDisks.csv";
         File fileOutput = new File(filename);
         if (!fileOutput.exists()) {
             fileOutput.createNewFile();
@@ -197,7 +197,7 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
         //healthy disks
 
         //load the file
-        JavaRDD<String> textFileLastDay = spark_context.textFile(data_path + "AnalisiFrequenzaValori/lastDay.csv", 1);
+        JavaRDD<String> textFileLastDay = spark_context.textFile(data_path + "AnalisiFrequenzaValori\\lastDay.csv", 1);
 
         //for each line make the tuple
         //each tuple rappresent a disk
@@ -247,7 +247,7 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
         //failed disks
 
         //same thing as above
-        JavaRDD<String> textFileFailed = spark_context.textFile(data_path + "AnalisiFrequenzaValori/failedDisks.csv", 1);
+        JavaRDD<String> textFileFailed = spark_context.textFile(data_path + "AnalisiFrequenzaValori\\failedDisks.csv", 1);
 
         JavaPairRDD<String, ArrayList<String>> failed = textFileFailed.mapToPair(riga ->
         {

@@ -8,6 +8,9 @@
       <sourceFolder url="file://$MODULE_DIR$/src/main/resources" type="java-resource" />
       <sourceFolder url="file://$MODULE_DIR$/src/test/java" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/.idea" />
+      <excludeFolder url="file://$MODULE_DIR$/AnalisiFrequenzaValori" />
+      <excludeFolder url="file://$MODULE_DIR$/Data" />
+      <excludeFolder url="file://$MODULE_DIR$/SpreadSheets" />
       <excludeFolder url="file://$MODULE_DIR$/backblazeHDDstats" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
