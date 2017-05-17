@@ -136,7 +136,7 @@ public class Main {
         // Cluster the data into two classes using KMeans
         int NUMBERCLUSTER = 5;
         int numIterations = 20;
-        KMeansModel clusters = KMeans.train(parsedData.rdd(), numClusters, numIterations);
+        KMeansModel clusters = KMeans.train(parsedData.rdd(), NUMBERCLUSTER, numIterations);
 
         System.out.println("Cluster centers:");
         for (Vector center: clusters.clusterCenters()) {
