@@ -8,6 +8,7 @@ import org.apache.spark.mllib.fpm.FPGrowth;
 import org.apache.spark.mllib.fpm.FPGrowthModel;
 import scala.Tuple2;
 
+import javax.xml.bind.SchemaOutputResolver;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -92,12 +93,13 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
         //                                                              one if the value >= 18 and <= +inf
 
         //this give a name to the item, very useful when reading the rules
-        final String[] valuesAR = new String[]{         "R_ERR",              "SPIN-UP",          "S&S",              "REALLOC_MEDIUM",     "REALLOC_HIGH",      "HOURS",             "SPIN_ERR",          "POWER-CYCL_MEDIUM",    "POWER-CYCL_HIGH",       "RETRACT_MEDIUM",   "RETRACT_HIGH",      "LOAD&UNL",        "UNST-SEC_MEDIUM",   "UNST-SEC_HIGH",       "ABS-ERR_MEDIUM",    "ABS-ERR_HIGH"};
-        final double[] lowerThreshold = new double[]{    16,                  3500,               50000,              30,                   60,                  40000,               3,                   100,                     250,                    100,                250,                 400000,            10,                  40,                    10,                  40};
-        final double[] upperThreshold = new double[]{    Double.MAX_VALUE,    Double.MAX_VALUE,   Double.MAX_VALUE,   60,                   Double.MAX_VALUE,    Double.MAX_VALUE,     Double.MAX_VALUE,    500,                     Double.MAX_VALUE,       500,                Double.MAX_VALUE,    Double.MAX_VALUE,  40,                  Double.MAX_VALUE,      40,                  Double.MAX_VALUE};
-        final int[] columnIndex = new int[]{             6,                   10,                 12,                 14,                   14,                  20,                  22,                  26,                      26,                     48,                 48,                  50,                58,                  58,                    60,                  60};
+        final String[] valuesAR = new String[]{     "R_ERR_1",		"R_ERR_2",		"SPIN-UP_1",		"SPIN-UP_2",		"SPIN-UP_3",		"S&S_1",		"S&S_2",		"S&S_3",		"REALLOC_1",		"REALLOC_2",		"REALLOC_3",		"HOURS_1",		"HOURS_2",		"HOURS_3",		"SPIN_ERR_1",		"SPIN_ERR_2",		"SPIN_ERR_3",		"POWER-CYCL_1",		"POWER-CYCL_2",		"POWER-CYCL_3",		"RETRACT_1",		"RETRACT_2",		"RETRACT_3",		"LOAD&UNL_1",		"LOAD&UNL_2",		"LOAD&UNL_3",		"UNST-SEC_1",		"UNST-SEC_2",		"UNST-SEC_3",		"ABS-ERR_1",		"ABS-ERR_2",		"ABS-ERR_3"		};
+        final double[] lowerThreshold = new double[]{100163790,		662494408,	1022,		3192,		5609,		43,		552,		9401,		2218,		14465,		43671,		11005,		22755,		37503,		4,		131078,		327683,		20,		57,		568,		702,		17472,		49391,		134886,		774306,		3259397,		3095,		11332,		30764,		1519,		7135,		28138		};
+        final double[] upperThreshold = new double[]{662494408,		Double.MAX_VALUE,		3192,		5609,		Double.MAX_VALUE,		552,		9401,		Double.MAX_VALUE,		14465,		43671,		Double.MAX_VALUE,		22755,		37503,		Double.MAX_VALUE,		131078,		327683,		Double.MAX_VALUE,		57,		568,		Double.MAX_VALUE,		17472,		49391,		Double.MAX_VALUE,		774306,		3259397,		Double.MAX_VALUE,		11332,		30764,		Double.MAX_VALUE,		7135,		28138,		Double.MAX_VALUE		};
+        final int[] columnIndex = new int[]{         6,             6,              10,                 10,                 10,                 12,             12,             12,              14,                   14,              14,                 20,             20,             20,             22,                  22,                22,                 26,                 26,                 26,                 48,                 48,                  48,                50,                 50,                 50,                 58,                  58,                58,                 60,                    60,                  60};
         //columnIndex is the list of interesting columns
         // @formatter:on
+        System.out.println(valuesAR.length + " " + lowerThreshold.length + " " + upperThreshold.length + " " + columnIndex.length);
         final String data_path = Utils.path;
 
         System.out.println("Data path: " + data_path);
@@ -301,7 +303,7 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
         JavaRDD<List<String>> transactions = data.map(line -> Arrays.asList(line.split(" ")));
 
         FPGrowth fpg = new FPGrowth()
-                .setMinSupport(0.1)
+                .setMinSupport(0.4)
                 .setNumPartitions(10);
         FPGrowthModel<String> model = fpg.run(transactions);
 
@@ -330,7 +332,7 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
         transactions = data.map(line -> Arrays.asList(line.split(" ")));
 
         fpg = new FPGrowth()
-                .setMinSupport(0.1)
+                .setMinSupport(0.4)
                 .setNumPartitions(10);
         model = fpg.run(transactions);
 
