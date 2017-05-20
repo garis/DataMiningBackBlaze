@@ -249,15 +249,17 @@ public class Main {
                 StringBuilder totale = new StringBuilder();
                 String[] valori = tupla._2().split(",");
                 if (valori.length > 6){
-                for (int j = 0; j < columnIndex.length; j++) {
-                    if (!valori[columnIndex[j]].isEmpty()) {
-                        double value = Double.parseDouble(valori[columnIndex[j]]);
-                        if (value >= lowerThreshold[j] && value <= upperThreshold[j]) {
-                            totale.append(valuesAR[j]);
-                            totale.append(" ");
+                    for (int j = 0; j < columnIndex.length; j++) {
+                        if (!valori[columnIndex[j]].isEmpty()) {
+                            double value = Double.parseDouble(valori[columnIndex[j]]);
+                            //filtra tutti i valori = 0 perchè dopo una breve discussione abbiamo deciso che un valore a zero non
+                            //dovrebbe essere presente nell'analisi
+                            if ( value > 0 && value >= lowerThreshold[j] && value <= upperThreshold[j]) {
+                                totale.append(valuesAR[j]);
+                                totale.append(" ");
+                            }
                         }
                     }
-                }
                 }
 
                 return new Tuple2(tupla._1(), totale.toString());
