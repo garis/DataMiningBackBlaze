@@ -3,13 +3,12 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.PairFlatMapFunction;
-import org.apache.spark.mllib.clustering.KMeans;
-import org.apache.spark.mllib.clustering.KMeansModel;
-import org.apache.spark.mllib.linalg.Vector;
-import org.apache.spark.mllib.linalg.Vectors;
-
+import org.apache.spark.mllib.fpm.AssociationRules;
+import org.apache.spark.mllib.fpm.FPGrowth;
+import org.apache.spark.mllib.fpm.FPGrowthModel;
 import scala.Tuple2;
 
+import javax.xml.bind.SchemaOutputResolver;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -20,7 +19,87 @@ public class Main {
 
     public static void main(String[] args) throws IOException {
         final long startTime = System.currentTimeMillis();
+        /*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        HELP:
+        sistemare la classe Utils mettendo il path corretto del dataset
+        creare la cartella (dentro al path di Utils) "AnalisiFrequenzaValori"
+        copiare dentro ad essa il file "2016-12-31.csv" del dataset
+        e tutto dovrebbe andare (ammess odi aver configurato Hadoop e Spark)
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
 
+        /*From this (see:"ContaQuantiValoriInOgniColonna.txt"):
+0,date,24471617
+1,serial_number,24471617
+2,model,24471617
+3,capacity_bytes,24471617
+4,failure,24471617
+5,smart_1_normalized,24471593
+6,smart_1_raw,24471593
+9,smart_3_normalized,24471593
+10,smart_3_raw,24471593
+11,smart_4_normalized,24471593
+12,smart_4_raw,24471593
+13,smart_5_normalized,24471593
+14,smart_5_raw,24471593
+15,smart_7_normalized,24471593
+16,smart_7_raw,24471593
+19,smart_9_normalized,24471593
+20,smart_9_raw,24471593
+21,smart_10_normalized,24471593
+22,smart_10_raw,24471593
+25,smart_12_normalized,24471593
+26,smart_12_raw,24471593
+57,smart_197_normalized,24471593
+58,smart_197_raw,24471593
+59,smart_198_normalized,24471593
+60,smart_198_raw,24471593
+61,smart_199_normalized,24471593
+62,smart_199_raw,24471593
+51,smart_194_normalized,24471342
+52,smart_194_raw,24471342
+47,smart_192_normalized,24428958
+48,smart_192_raw,24428958
+49,smart_193_normalized,24157811
+50,smart_193_raw,24157811
+
+we ignore the normalized values, date, SN, model and capacity. We obtain:
+4,failure,24471617
+6,smart_1_raw,24471593      R_ERR:      Read Error Rate
+10,smart_3_raw,24471593     SPIN-UP:    Spin-Up Time
+12,smart_4_raw,24471593     S&S:        Start/Stop Count
+14,smart_5_raw,24471593     REALLOC:    Reallocated Sectors Count
+16,smart_7_raw,24471593     SEEK-ERR:   Seek Error Rate
+20,smart_9_raw,24471593     HOURS:      Power-On Hours
+22,smart_10_raw,24471593    SPIN-ERR:   Spin Retry Count
+26,smart_12_raw,24471593    POWER-CYCL: Power Cycle Count
+58,smart_197_raw,24471593   UNST-SEC:   Current Pending Sector Count
+60,smart_198_raw,24471593   ABS-ERR:    Uncorrectable Sector Count
+62,smart_199_raw,24471593   IF-ERR:     UltraDMA CRC Error Count
+52,smart_194_raw,24471342   TEMP:       Temperature
+48,smart_192_raw,24428958   RETRACT:    Number of power-off or emergency retract cycles
+50,smart_193_raw,24157811   LOAD&UNL:   Count of load/unload cycles into head landing zone position
+         */
+
+
+        // @formatter:off
+
+        //example of Pastea's idea implementations (thresholds with overlapping boundaries) with example values:    0   1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  16  17  18  19  20  21  22 ............................
+        //final String[] valuesAR = new String[]{      "R_ERR_LOW", "R_ERR_MED", "R_ERR_HIGH"};                     |-------------------R_ERR_LOW--------------------|                      |--------------------R_ERR_HIGH-------..........
+        //final double[] lowerThreshold = new double[]{       0,           8,           18};                                                              |-----------------------R_ERR_MED------------------------|
+        //final double[] upperThreshold = new double[]{ 12,          22,          Double.MAX_VALUE};
+        //final int[] columnIndex = new int[]{          6,           6,           6};
+        //in word this means: for the sixth column we want three item:  one if the value >= 0 and <= 12
+        //                                                              one if the value >= 8 and <= 22
+        //                                                              one if the value >= 18 and <= +inf
+
+        //this give a name to the item, very useful when reading the rules
+        final String[] valuesAR = new String[]{"R_ERR_1",		"R_ERR_2",		"R_ERR_3",		"SPIN-UP_1",		"SPIN-UP_2",		"SPIN-UP_3",		"SPIN-UP_4",		"S&S_1",		"S&S_2",		"S&S_3",		"S&S_4",		"REALLOC_1",		"REALLOC_2",		"REALLOC_3",		"REALLOC_4",		"HOURS_1",		"HOURS_2",		"HOURS_3",		"HOURS_4",		"SPIN_ERR_1",		"SPIN_ERR_2",		"SPIN_ERR_3",		"SPIN_ERR_4",		"POWER-CYCL_1",		"POWER-CYCL_2",		"POWER-CYCL_3",		"POWER-CYCL_4",		"RETRACT_1",		"RETRACT_2",		"RETRACT_3",		"RETRACT_4",		"LOAD&UNL_1",		"LOAD&UNL_2",		"LOAD&UNL_3",		"LOAD&UNL_4",		"UNST-SEC_1",		"UNST-SEC_2",		"UNST-SEC_3",		"UNST-SEC_4",		"ABS-ERR_1",		"ABS-ERR_2",		"ABS-ERR_3",		"ABS-ERR_4"};
+        final double[] lowerThreshold = new double[]{110030719,		523007401,		1298053813,		1422,		3180,		5143,		7509,		43,		513,		1224,		9633,		2928,		11736,		26427,		48796,		11301,		23072,		37488,		93733,		0,		4,		131078,		327683,		17,		47,		100,		593,		634,		5653,		21807,		49391,		116388,		363196,		972930,		3331886,		1637,		7234,		14538,		31424,		1138,		3557,		8078,		28138};
+        final double[] upperThreshold = new double[]{523007401,		1298053813,		Double.MAX_VALUE,		3180,		5143,		7509,		Double.MAX_VALUE,		513,		1224,		9633,		Double.MAX_VALUE,		11736,		26427,		48796,		Double.MAX_VALUE,		23072,		37488,		93733,		Double.MAX_VALUE,		4,		131078,		327683,		Double.MAX_VALUE,		47,		100,		593,		Double.MAX_VALUE,		5653,		21807,		49391,		Double.MAX_VALUE,		363196,		972930,		3331886,		Double.MAX_VALUE,		7234,		14538,		31424,		Double.MAX_VALUE,		3557,		8078,		28138,		Double.MAX_VALUE};
+        final int[] columnIndex = new int[]{6,		6,		6,		10,		10,		10,		10,		12,		12,		12,		12,		14,		14,		14,		14,		20,		20,		20,		20,		22,		22,		22,		22,		26,		26,		26,		26,		48,		48,		48,		48,		50,		50,		50,		50,		58,		58,		58,		58,		60,		60,		60,		60};
+        //columnIndex is the list of interesting columns
+        // @formatter:on
+        System.out.println(valuesAR.length + " " + lowerThreshold.length + " " + upperThreshold.length + " " + columnIndex.length);
         final String data_path = Utils.path;
 
         System.out.println("Data path: " + data_path);
@@ -116,38 +195,171 @@ public class Main {
             bw.close();
         }
 
-        //failed disks
+        //now the analysis
 
-        final int INDICECOLONNA=6;
+        //healthy disks
 
-        //same thing as above
-        JavaRDD<String> data  = spark_context.textFile(data_path + "AnalisiFrequenzaValori/failedDisks.csv", 1);
+        //load the file
+        JavaRDD<String> textFileLastDay = spark_context.textFile(data_path + "AnalisiFrequenzaValori/lastDay.csv", 1);
 
-        JavaRDD<Vector> parsedData = data.map(riga ->
+        //for each line make the tuple
+        //each tuple rappresent a disk
+        //but we load only the columns that we want based on the columnIndex, lowerThreshold and valuesAR
+        JavaPairRDD<String, ArrayList<String>> healthy = textFileLastDay.mapToPair(riga ->
         {
-            String[] vettore =riga.split(",");
-            double[] valore=new double[]{0};
-            if(vettore.length>=6)
-                valore[0]=Double.parseDouble(vettore[INDICECOLONNA]);
-            return Vectors.dense(valore);
-        }).filter((Vector valore)->
-        {
-            //filtra tutti i valori minori di zero
-            if((int)valore.toArray()[0]<=0) return false;
-            return true;
+            String key = "0";
+            String[] valori = riga.split(",");
+            ArrayList<String> lista = new ArrayList<>();
+            //if not failed
+            if (valori[4].compareTo("0") == 0) {
+                for (int i = 0; i < columnIndex.length; i++) {
+                    if (!valori[columnIndex[i]].isEmpty()) {
+                        double value = Double.parseDouble(valori[columnIndex[i]]);
+                        //filtra tutti i valori = 0 perchè dopo una breve discussione abbiamo deciso che un valore a zero non
+                        //dovrebbe essere presente nell'analisi
+                        if (value > 0 && value >= lowerThreshold[i] && value <= upperThreshold[i])
+                            lista.add(valuesAR[i]);
+                    }
+                }
+            } else
+                key = "-1";
+            return new Tuple2(key, lista);
         });
 
-        // Cluster the data into two classes using KMeans
-        int NUMBERCLUSTER = 5;
-        int numIterations = 20;
-        KMeansModel clusters = KMeans.train(parsedData.rdd(), NUMBERCLUSTER, numIterations);
+        //and now we buffer the result (the filtered files) in a file on disk
+        //this is a bit useless because we do not gain a lot of perfomance but is great for debug
+        List<Tuple2<String, ArrayList<String>>> result = healthy.collect();
 
-        System.out.println("Cluster centers:");
-        for (Vector center: clusters.clusterCenters()) {
-            double[] vettore=center.toArray();
-            System.out.printf("%f%n", vettore[0]);
-            // /System.out.printf("%f", String.format("%.0f", Double.parseDouble( center.toString())));//);BigDecimal.valueOf(Double.parseDouble(center.toString())));
+        filename = data_path + "forFrequentPatternMiningHEALTHY.txt";
+        fileOutput = new File(filename);
+        if (!fileOutput.exists()) {
+            fileOutput.createNewFile();
         }
+
+        FileWriter fw = new FileWriter(fileOutput.getAbsoluteFile(), false);
+        BufferedWriter bw = new BufferedWriter(fw);
+
+        for (Tuple2<String, ArrayList<String>> tupla : result) {
+            if (tupla._1().compareTo("-1") != 0) {
+                for (String lettera : tupla._2())
+                    bw.write(lettera + " ");
+                bw.write(String.format("%n"));
+            }
+        }
+        bw.write(String.format("%n"));
+        bw.close();
+
+        //failed disks
+
+        //same thing as above
+        JavaRDD<String> textFileFailed = spark_context.textFile(data_path + "AnalisiFrequenzaValori/failedDisks.csv", 1);
+
+        JavaPairRDD<String, ArrayList<String>> failed = textFileFailed.mapToPair(riga ->
+        {
+            String key = "0";
+            String[] valori = riga.split(",");
+            ArrayList<String> lista = new ArrayList<>();
+            //if failed check
+            //N.B: verifies that there are at least some valid values because some records have small number of values (like 6)
+            if (valori.length > 6 && valori[4].compareTo("1") == 0) {
+                for (int i = 0; i < columnIndex.length; i++) {
+                    if (!valori[columnIndex[i]].isEmpty()) {
+                        double value = Double.parseDouble(valori[columnIndex[i]]);
+                        //filtra tutti i valori = 0 perchè dopo una breve discussione abbiamo deciso che un valore a zero non
+                        //dovrebbe essere presente nell'analisi
+                        if (value > 0 && value >= lowerThreshold[i] && value <= upperThreshold[i])
+                            lista.add(valuesAR[i]);
+                    }
+                }
+            } else
+                key = "-1";
+            return new Tuple2(key, lista);
+        });
+
+        List<Tuple2<String, ArrayList<String>>> resultF = failed.collect();
+
+        filename = data_path + "forFrequentPatternMiningFAILED.txt";
+        fileOutput = new File(filename);
+        if (!fileOutput.exists()) {
+            fileOutput.createNewFile();
+        }
+
+        fw = new FileWriter(fileOutput.getAbsoluteFile(), false); // creating fileWriter object with the file
+        bw = new BufferedWriter(fw); // creating bufferWriter which is used to write the content into the file
+
+        for (Tuple2<String, ArrayList<String>> tupla : resultF) {
+            if (tupla._1().compareTo("-1") != 0) {
+                for (String lettera : tupla._2())
+                    bw.write(lettera + " ");
+                bw.write(String.format("%n"));
+            }
+        }
+        bw.write(String.format("%n"));
+        bw.close();
+
+
+        //mining
+        //really not much to say
+        //pretty much copy and paste from the documentation
+
+        JavaRDD<String> data = spark_context.textFile(data_path + "forFrequentPatternMiningFAILED.txt");
+
+        JavaRDD<List<String>> transactions = data.map(line -> Arrays.asList(line.split(" ")));
+
+        FPGrowth fpg = new FPGrowth()
+                .setMinSupport(0.4)
+                .setNumPartitions(10);
+        FPGrowthModel<String> model = fpg.run(transactions);
+
+        filename = data_path + "resultFrequentPatternMiningFAILED.csv";
+        fileOutput = new File(filename);
+        if (!fileOutput.exists()) {
+            fileOutput.createNewFile();
+        }
+
+        fw = new FileWriter(fileOutput.getAbsoluteFile(), false); // creating fileWriter object with the file
+        bw = new BufferedWriter(fw); // creating bufferWriter which is used to write the content into the file
+
+        for (FPGrowth.FreqItemset<String> itemset : model.freqItemsets().toJavaRDD().collect()) {
+            bw.write("[" + itemset.javaItems() + "], " + itemset.freq()+String.format("%n"));
+        }
+        bw.close();
+
+        //for (AssociationRules.Rule<String> rule
+        //        : model.generateAssociationRules(minConfidence).toJavaRDD().collect()) {
+        //    bw.write(rule.javaAntecedent() + ", " + rule.javaConsequent() + ", " + rule.confidence() + ", " + String.format("%n"));
+        //}
+        //bw.close();
+
+        data = spark_context.textFile(data_path + "forFrequentPatternMiningHEALTHY.txt");
+
+        transactions = data.map(line -> Arrays.asList(line.split(" ")));
+
+        fpg = new FPGrowth()
+                .setMinSupport(0.4)
+                .setNumPartitions(10);
+        model = fpg.run(transactions);
+
+        filename = data_path + "resultFrequentPatternMiningHEALTHY.csv";
+        fileOutput = new File(filename);
+        if (!fileOutput.exists()) {
+            fileOutput.createNewFile();
+        }
+
+        fw = new FileWriter(fileOutput.getAbsoluteFile(), false); // creating fileWriter object with the file
+        bw = new BufferedWriter(fw); // creating bufferWriter which is used to write the content into the file
+
+        for (FPGrowth.FreqItemset<String> itemset : model.freqItemsets().toJavaRDD().collect()) {
+            bw.write("[" + itemset.javaItems() + "], " + itemset.freq()+String.format("%n"));
+        }
+
+        bw.close();
+
+        //for (AssociationRules.Rule<String> rule
+        //        : model.generateAssociationRules(minConfidence).toJavaRDD().collect()) {
+        //    bw.write(rule.javaAntecedent() + ", " + rule.javaConsequent() + ", " + rule.confidence() + ", " + String.format("%n"));
+        //}
+        //bw.close();
 
         final long endTime = System.currentTimeMillis();
         System.out.println("Total execution time: " + (endTime - startTime));
