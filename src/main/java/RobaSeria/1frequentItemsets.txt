@@ -94,8 +94,8 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
 
         //this give a name to the item, very useful when reading the rules
         final String[] valuesAR = new String[]{"R_ERR_1",		"R_ERR_2",		"R_ERR_3",		"SPIN-UP_1",		"SPIN-UP_2",		"SPIN-UP_3",		"SPIN-UP_4",		"S&S_1",		"S&S_2",		"S&S_3",		"S&S_4",		"REALLOC_1",		"REALLOC_2",		"REALLOC_3",		"REALLOC_4",		"HOURS_1",		"HOURS_2",		"HOURS_3",		"HOURS_4",		"SPIN_ERR_1",		"SPIN_ERR_2",		"SPIN_ERR_3",		"SPIN_ERR_4",		"POWER-CYCL_1",		"POWER-CYCL_2",		"POWER-CYCL_3",		"POWER-CYCL_4",		"RETRACT_1",		"RETRACT_2",		"RETRACT_3",		"RETRACT_4",		"LOAD&UNL_1",		"LOAD&UNL_2",		"LOAD&UNL_3",		"LOAD&UNL_4",		"UNST-SEC_1",		"UNST-SEC_2",		"UNST-SEC_3",		"UNST-SEC_4",		"ABS-ERR_1",		"ABS-ERR_2",		"ABS-ERR_3",		"ABS-ERR_4"};
-        final double[] lowerThreshold = new double[]{61107137,		155508219,		677129031,		1016,		3026,		5122,		7505,		43,		429,		999,		9493,		1585,		8578,		24423,		48796,		7626,		16671,		26672,		39767,		4,		131078,		262150,		327685,		17,		47,		100,		593,		640,		6709,		22851,		49391,		133530,		718022,		2911961,		5225821,		1690,		7304,		14538,		31424,		1519,		6482,		11906,		29444};
-        final double[] upperThreshold = new double[]{155508219,		677129031,		Double.MAX_VALUE,		3026,		5122,		7505,		Double.MAX_VALUE,		429,		999,		9493,		Double.MAX_VALUE,		8578,		24423,		48796,		Double.MAX_VALUE,		16671,		26672,		39767,		Double.MAX_VALUE,		131078,		262150,		327685,		Double.MAX_VALUE,		47,		100,		593,		Double.MAX_VALUE,		6709,		22851,		49391,		Double.MAX_VALUE,		718022,		2911961,		5225821,		Double.MAX_VALUE,		7304,		14538,		31424,		Double.MAX_VALUE,		6482,		11906,		29444,		Double.MAX_VALUE};
+        final double[] lowerThreshold = new double[]{110030719,		523007401,		1298053813,		1422,		3180,		5143,		7509,		43,		513,		1224,		9633,		2928,		11736,		26427,		48796,		11301,		23072,		37488,		93733,		0,		4,		131078,		327683,		17,		47,		100,		593,		634,		5653,		21807,		49391,		116388,		363196,		972930,		3331886,		1637,		7234,		14538,		31424,		1138,		3557,		8078,		28138};
+        final double[] upperThreshold = new double[]{523007401,		1298053813,		Double.MAX_VALUE,		3180,		5143,		7509,		Double.MAX_VALUE,		513,		1224,		9633,		Double.MAX_VALUE,		11736,		26427,		48796,		Double.MAX_VALUE,		23072,		37488,		93733,		Double.MAX_VALUE,		4,		131078,		327683,		Double.MAX_VALUE,		47,		100,		593,		Double.MAX_VALUE,		5653,		21807,		49391,		Double.MAX_VALUE,		363196,		972930,		3331886,		Double.MAX_VALUE,		7234,		14538,		31424,		Double.MAX_VALUE,		3557,		8078,		28138,		Double.MAX_VALUE};
         final int[] columnIndex = new int[]{6,		6,		6,		10,		10,		10,		10,		12,		12,		12,		12,		14,		14,		14,		14,		20,		20,		20,		20,		22,		22,		22,		22,		26,		26,		26,		26,		48,		48,		48,		48,		50,		50,		50,		50,		58,		58,		58,		58,		60,		60,		60,		60};
         //columnIndex is the list of interesting columns
         // @formatter:on
@@ -119,8 +119,7 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
                 org.apache.hadoop.fs.LocalFileSystem.class.getName()
         );
 
-        //now we want all failed disks on on file
-        //if the file doesn't exist (or it is the first run of the code) make a new one
+        //region CREA failedDisks.csv se non c'è
 
         String filename = data_path + "AnalisiFrequenzaValori/failedDisks.csv";
         File fileOutput = new File(filename);
@@ -195,9 +194,9 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
             bw.close();
         }
 
-        //now the analysis
+        //endregion
 
-        //healthy disks
+        //region DISCHI SANI
 
         //load the file
         JavaRDD<String> textFileLastDay = spark_context.textFile(data_path + "AnalisiFrequenzaValori/lastDay.csv", 1);
@@ -249,7 +248,9 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
         bw.write(String.format("%n"));
         bw.close();
 
-        //failed disks
+        //endregion
+
+        //region DISCHI ROTTI
 
         //same thing as above
         JavaRDD<String> textFileFailed = spark_context.textFile(data_path + "AnalisiFrequenzaValori/failedDisks.csv", 1);
@@ -297,8 +298,9 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
         bw.write(String.format("%n"));
         bw.close();
 
+        //endregion
 
-        //mining
+        //region MINING DISCHI ROTTI
         //really not much to say
         //pretty much copy and paste from the documentation
 
@@ -331,6 +333,9 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
         //}
         //bw.close();
 
+        //endregion
+
+        //region MINING DISCHI SANI
         data = spark_context.textFile(data_path + "forFrequentPatternMiningHEALTHY.txt");
 
         transactions = data.map(line -> Arrays.asList(line.split(" ")));
@@ -360,6 +365,8 @@ we ignore the normalized values, date, SN, model and capacity. We obtain:
         //    bw.write(rule.javaAntecedent() + ", " + rule.javaConsequent() + ", " + rule.confidence() + ", " + String.format("%n"));
         //}
         //bw.close();
+
+        //endregion
 
         final long endTime = System.currentTimeMillis();
         System.out.println("Total execution time: " + (endTime - startTime));
