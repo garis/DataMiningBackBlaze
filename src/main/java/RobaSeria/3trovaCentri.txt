@@ -22,7 +22,7 @@ public class Main {
 
     public static void main(String[] args) throws IOException {
         final long startTime = System.currentTimeMillis();
-        final String[] valuesAR = new String[]{"R_ERR", "SPIN-UP", "S&S", "REALLOC", "HOURS", "SPIN_ERR", "POWER-CYCL","RETRACT", "LOAD&UNL", "UNST-SEC","ABS-ERR"};
+        final String[] valuesAR = new String[]{"R_ERR", "SPIN-UP", "S&S", "REALLOC", "HOURS", "SPIN_ERR", "POWER-CYCL", "RETRACT", "LOAD&UNL", "UNST-SEC", "ABS-ERR"};
         final int[] columnIndex = new int[]{6, 10, 12, 14, 20, 22, 26, 48, 50, 58, 60};
         final String data_path = Utils.path;
 
@@ -98,8 +98,7 @@ public class Main {
         int numIterations = 20;
         long[][] centriInt = new long[columnIndex.length][NUMBERCLUSTER];
 
-        for (int i = 0; i < columnIndex.length; i++)
-        {
+        for (int i = 0; i < columnIndex.length; i++) {
             final int INDICECOLONNA = columnIndex[i];
 
             //same thing as above
@@ -107,43 +106,38 @@ public class Main {
 
             JavaRDD<Vector> parsedData = data.map(riga ->
             {
-                String[] vettore =riga.split(",");
-                double[] valore=new double[]{0};
-                if(vettore.length>=6)
-                    valore[0]=Double.parseDouble(vettore[INDICECOLONNA]);
+                String[] vettore = riga.split(",");
+                double[] valore = new double[]{0};
+                if (vettore.length >= INDICECOLONNA && !vettore[INDICECOLONNA].isEmpty())
+                    valore[0] = Double.parseDouble(vettore[INDICECOLONNA]);
+                else
+                    valore[0] = 0;
                 return Vectors.dense(valore);
-            }).filter((Vector valore)->
+            }).filter((Vector valore) ->
             {
                 //filtra tutti i valori minori di zero
-                if((int)valore.toArray()[0]<=0) return false;
+                if ((int) valore.toArray()[0] <= 0) return false;
                 return true;
             });
 
             KMeansModel clusters = KMeans.train(parsedData.rdd(), NUMBERCLUSTER, numIterations);
 
-            System.out.println("Cluster centers (column: " + INDICECOLONNA + "):");
-            int o=0;
-            for (Vector center : clusters.clusterCenters()) {
-                double[] vettore = center.toArray();
-                System.out.printf("%d  ", Math.round(vettore[0]));
-                centriInt[i][o++] = Math.round(vettore[0]);
-                // /System.out.printf("%f", String.format("%.0f", Double.parseDouble( center.toString())));//);BigDecimal.valueOf(Double.parseDouble(center.toString())));
-            }
+            int o = 0;
+            for (Vector center : clusters.clusterCenters())
+                centriInt[i][o++] = Math.round(center.toArray()[0]);
         }
 
-        long[][] soglieInt = new long[columnIndex.length][NUMBERCLUSTER-1]; //Thresholds array
-        for(int i = 0; i<columnIndex.length; i++)
-        {
+        long[][] soglieInt = new long[columnIndex.length][NUMBERCLUSTER - 1]; //Thresholds array
+        for (int i = 0; i < columnIndex.length; i++) {
             List<Long> temp = new ArrayList<Long>(); //Temporary array used to sort centers
-            for(int o = 0; o<NUMBERCLUSTER; o++)
-            {
+            for (int o = 0; o < NUMBERCLUSTER; o++) {
                 temp.add(centriInt[i][o]);
             }
             Collections.sort(temp);
-            for(int o = 1; o<NUMBERCLUSTER; o++)
-            {
-                soglieInt[i][o-1] = (temp.get(o-1)+temp.get(o))/2;
-                System.out.printf("%d  ", soglieInt[i][o-1]);
+            System.out.printf("%d   ", 1);
+            for (int o = 1; o < NUMBERCLUSTER; o++) {
+                soglieInt[i][o - 1] = (temp.get(o - 1) + temp.get(o)) / 2;
+                System.out.printf("%d   ", soglieInt[i][o - 1]);
             }
             System.out.print("\n");
         }
@@ -151,23 +145,19 @@ public class Main {
         //Printing strings (kinda) ready to be copy-pasted, just delete the last comma
         //WARNING: F'ing gross & messy, like, Filthy Frank's hair cake gross.
         //Names
-        final int mode=0; //Change -1 to 0 to remove the first threshold (from 0 to x)
+        final int mode = -1; //Change -1 to 0 to remove the first threshold (from 0 to x)
         final String finalString = "Double.MAX_VALUE";
         System.out.print("{");
-        for(int i = 0; i<columnIndex.length; i++)
-        {
-            for (int o = mode; o < NUMBERCLUSTER-1; o++)
-            {
-                System.out.print("\"" + valuesAR[i] + "_" + ((int)(o+1)) + "\",\t\t");
+        for (int i = 0; i < columnIndex.length; i++) {
+            for (int o = mode; o < NUMBERCLUSTER - 1; o++) {
+                System.out.print("\"" + valuesAR[i] + "_" + ((int) (o + 1)) + "\",\t\t");
             }
         }
         System.out.println("}");
         //Thresholds (lower)
         System.out.print("{");
-        for(int i = 0; i<columnIndex.length; i++)
-        {
-            for (int o = mode; o < NUMBERCLUSTER-1; o++)
-            {
+        for (int i = 0; i < columnIndex.length; i++) {
+            for (int o = mode; o < NUMBERCLUSTER - 1; o++) {
                 if (o < 0)
                     System.out.print("0,\t\t");
                 else
@@ -177,10 +167,8 @@ public class Main {
         System.out.println("}");
         //Thresholds (Higher)
         System.out.print("{");
-        for(int i = 0; i<columnIndex.length; i++)
-        {
-            for (int o = mode+1; o <= NUMBERCLUSTER-1; o++)
-            {
+        for (int i = 0; i < columnIndex.length; i++) {
+            for (int o = mode + 1; o <= NUMBERCLUSTER - 1; o++) {
                 if (o == (NUMBERCLUSTER - 1))
                     System.out.print(finalString + ",\t\t");
                 else
@@ -190,10 +178,8 @@ public class Main {
         System.out.println("}");
         //Column Indexes
         System.out.print("{");
-        for(int i = 0; i<columnIndex.length; i++)
-        {
-            for (int o = mode+1; o <= NUMBERCLUSTER-1; o++)
-            {
+        for (int i = 0; i < columnIndex.length; i++) {
+            for (int o = mode + 1; o <= NUMBERCLUSTER - 1; o++) {
                 System.out.print(columnIndex[i] + ",\t\t");
             }
         }

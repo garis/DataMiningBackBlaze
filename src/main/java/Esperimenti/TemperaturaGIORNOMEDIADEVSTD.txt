@@ -27,7 +27,7 @@ public class Main {
                 org.apache.hadoop.fs.LocalFileSystem.class.getName()
         );
 
-        JavaPairRDD<String, String> textFile = spark_context.wholeTextFiles(data_path + "Data", 10000);
+        JavaPairRDD<String, String> textFile = spark_context.wholeTextFiles(data_path + "Data", 10);
 
         JavaPairRDD<String, ArrayList<Double>> temperature = textFile.mapToPair(fileDisco ->
         {
@@ -70,7 +70,7 @@ public class Main {
         });
 
         //now tempMin, TempMax, Count drive, total capacity
-        JavaPairRDD<String, String> textFile2 = spark_context.wholeTextFiles(data_path + "Data", 10000);
+        JavaPairRDD<String, String> textFile2 = spark_context.wholeTextFiles(data_path + "Data", 10);
 
         JavaPairRDD<String, ArrayList<Double>> stats = textFile2.mapToPair(fileDisco ->
         {
