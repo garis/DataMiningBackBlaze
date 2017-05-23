@@ -122,9 +122,24 @@ public class Main {
 
             KMeansModel clusters = KMeans.train(parsedData.rdd(), NUMBERCLUSTER, numIterations);
 
-            int o = 0;
+            List<Long> tempSort = new ArrayList<>();
             for (Vector center : clusters.clusterCenters())
+                tempSort.add(Math.round(center.toArray()[0]));
+            Collections.sort(tempSort);
+            final Long primaSoglia = (tempSort.get(0)+tempSort.get(1))/2;
+            JavaRDD<Vector> parsedData2 = parsedData.filter((x) ->
+            {
+                if ((int) x.toArray()[0] <= primaSoglia) return true;
+                return false;
+            });
+
+            KMeansModel clusters2 = KMeans.train(parsedData2.rdd(), NUMBERCLUSTER, numIterations);
+
+
+            int o = 0;
+            for (Vector center : clusters2.clusterCenters())
                 centriInt[i][o++] = Math.round(center.toArray()[0]);
+
         }
 
         long[][] soglieInt = new long[columnIndex.length][NUMBERCLUSTER - 1]; //Thresholds array
