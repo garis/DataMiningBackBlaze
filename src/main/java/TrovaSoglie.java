@@ -9,7 +9,6 @@ import org.apache.spark.mllib.linalg.Vector;
 import org.apache.spark.mllib.linalg.Vectors;
 import scala.Tuple2;
 
-import javax.xml.bind.SchemaOutputResolver;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -18,9 +17,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class Main {
-
-    public static void main(String[] args) throws IOException {
+public class TrovaSoglie {
+    public void TrovaSoglie(JavaSparkContext spark_context) throws IOException {
         final long startTime = System.currentTimeMillis();
         final String[] valuesAR = new String[]{"R_ERR", "SPIN-UP", "S&S", "REALLOC", "HOURS", "SPIN_ERR", "POWER-CYCL", "RETRACT", "LOAD&UNL", "UNST-SEC", "ABS-ERR"};
         final int[] columnIndex = new int[]{6, 10, 12, 14, 20, 22, 26, 48, 50, 58, 60};
@@ -28,69 +26,11 @@ public class Main {
 
         System.out.println("Data path: " + data_path);
 
-        //initialize the Spark context in Java
-        JavaSparkContext spark_context = new JavaSparkContext(new SparkConf()
-                .setAppName("Spark Count")
-                .setMaster("local")
-        );
-
-
-        //fix filesystem errors when using java .jar execution
-        spark_context.hadoopConfiguration().set("fs.hdfs.impl",
-                org.apache.hadoop.hdfs.DistributedFileSystem.class.getName()
-        );
-        spark_context.hadoopConfiguration().set("fs.file.impl",
-                org.apache.hadoop.fs.LocalFileSystem.class.getName()
-        );
-
         //now we want all failed disks on on file
         //if the file doesn't exist (or it is the first run of the code) make a new one
 
-        String filename = data_path + "AnalisiFrequenzaValori/failedDisks.csv";
+        String filename = data_path + "failedDisks.csv";
         File fileOutput = new File(filename);
-        if (!fileOutput.exists()) {
-            fileOutput.createNewFile();
-
-            JavaPairRDD<String, String> textFile = spark_context.wholeTextFiles(data_path + "Data", 400);
-
-            JavaPairRDD<String, ArrayList<Tuple2<String, String>>> failedGroupByDay = textFile.mapToPair(file ->
-            {
-                String key = "-1";
-                String[] dischi = file._2().split(String.format("%n"));
-                ArrayList<Tuple2<String, ArrayList<String>>> lista = new ArrayList<>();
-                for (String disco : dischi) {
-                    key = "0";
-                    String[] valori = disco.split(",");
-                    if (valori.length > 4 && valori[4].compareTo("1") == 0) {
-                        lista.add(new Tuple2("1", disco));
-                    }
-                }
-                return new Tuple2(key, lista);
-            });
-
-            JavaPairRDD<String, String> failedDisks = failedGroupByDay.flatMapToPair((PairFlatMapFunction<Tuple2<String, ArrayList<Tuple2<String, String>>>, String, String>) t -> {
-                List<Tuple2<String, String>> resultFailed = new ArrayList<>();
-
-                for (Tuple2<String, String> lista : t._2()) {
-                    resultFailed.add(new Tuple2(lista._1(), lista._2()));
-                }
-                return resultFailed.iterator();
-            });
-
-            List<Tuple2<String, String>> resultFailed = failedDisks.collect();
-
-            FileWriter fw = new FileWriter(fileOutput.getAbsoluteFile(), false);
-            BufferedWriter bw = new BufferedWriter(fw);
-
-            for (Tuple2<String, String> tupla : resultFailed) {
-                if (tupla._1().compareTo("-1") != 0) {
-                    bw.write(tupla._2());
-                    bw.write(String.format("%n"));
-                }
-            }
-            bw.write(String.format("%n"));
-            bw.close();
-        }
 
         //failed disks
         // Cluster the data into two classes using KMeans
@@ -102,7 +42,7 @@ public class Main {
             final int INDICECOLONNA = columnIndex[i];
 
             //same thing as above
-            JavaRDD<String> data = spark_context.textFile(data_path + "AnalisiFrequenzaValori/failedDisks.csv", 1);
+            JavaRDD<String> data = spark_context.textFile(data_path + "failedDisks.csv", 1);
 
             JavaRDD<Vector> parsedData = data.map(riga ->
             {
@@ -126,7 +66,7 @@ public class Main {
             for (Vector center : clusters.clusterCenters())
                 tempSort.add(Math.round(center.toArray()[0]));
             Collections.sort(tempSort);
-            final Long primaSoglia = (tempSort.get(0)+tempSort.get(1))/2;
+            final Long primaSoglia = (tempSort.get(0) + tempSort.get(1)) / 2;
             JavaRDD<Vector> parsedData2 = parsedData.filter((x) ->
             {
                 if ((int) x.toArray()[0] <= primaSoglia) return true;

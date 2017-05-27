@@ -13,29 +13,14 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 
-public class Main {
-
-    public static void main(String[] args) throws IOException {
+public class AndamentoItemsets {
+    public void AndamentoItemsets(JavaSparkContext spark_context) throws IOException {
         final String data_path = Utils.path;
         final int numberOfDays = 30;
 
-        //initialize the Spark context in Java
-        JavaSparkContext spark_context = new JavaSparkContext(new SparkConf()
-                .setAppName("Spark Count")
-                .setMaster("local")
-        );
-
-        //fix filesystem errors when using java .jar execution
-        spark_context.hadoopConfiguration().set("fs.hdfs.impl",
-                org.apache.hadoop.hdfs.DistributedFileSystem.class.getName()
-        );
-        spark_context.hadoopConfiguration().set("fs.file.impl",
-                org.apache.hadoop.fs.LocalFileSystem.class.getName()
-        );
-
         JavaPairRDD<String, String> textFile = spark_context.wholeTextFiles(data_path + "Data", 800);
 
-        //first get all the Serial Number of all the failed disks
+        //estraiamo tutti i numeri seriali dei dischi rotti
         JavaPairRDD<String, ArrayList<Tuple2<String, String>>> failedDisks = textFile.mapToPair(file ->
         {
             String key = "-1";
@@ -45,13 +30,13 @@ public class Main {
                 key = "0";
                 String[] valori = disco.split(",");
                 if (valori[4].compareTo("1") == 0) {
-                    lista.add(new Tuple2("1", valori[1]));  //take only the Serial Number
+                    lista.add(new Tuple2("1", valori[1]));  //prende solo il numero seriale
                 }
             }
             return new Tuple2(key, lista);
         });
 
-        //extract all the Tuple2
+        //estraimo le tuple dalla lista di tuple
         JavaPairRDD<String, String> failedDisksSNs = failedDisks.flatMapToPair((PairFlatMapFunction<Tuple2<String, ArrayList<Tuple2<String, String>>>, String, String>) t -> {
             List<Tuple2<String, String>> resultFailed = new ArrayList<>();
 
@@ -67,8 +52,8 @@ public class Main {
             listOfSN.add(tupla._2());
         }
 
-        //CON RECORD INTENDO LA SINGOLA RIGA DI UN FILE .CSV
         //ottiene tutti i records dei dischi falliti
+        //con record si intende la singola riga di un file .csv
         JavaPairRDD<String, ArrayList<Tuple2<String, String>>> failedDisksBySN = textFile.mapToPair(file ->
         {
             String key = "-1";
@@ -98,7 +83,7 @@ public class Main {
         //System.out.println("OK");
         //endregion
 
-        //region cinese di java misto spark
+        //region note utili per l'utilizzo dei metodi
         //public <C> JavaPairRDD<K,C> combineByKey(Function<V,C> createCombiner,
         //        Function2<C,V,C> mergeValue,
         //        Function2<C,C,C> mergeCombiners)
@@ -111,7 +96,9 @@ public class Main {
         //DoubleFlatMapFunction<T>	    T => Iterable<Double>
         //PairFlatMapFunction<T, K, V>	T => Iterable<Tuple2<K, V>>
         //Function2<T1, T2, R>	        T1, T2 => R (function of two arguments)
+
         //endregion
+
         //raggruppa per numero seriale andando a formare una lista di record per ogni numero seriale
         //un po' come un group by di database raggruppo per numero seriale ottenendo una lista di record
         //result List<Tuple2<SerialNumber, ArrayList<Record of days>>>
