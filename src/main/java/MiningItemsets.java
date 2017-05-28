@@ -16,7 +16,7 @@ import java.io.IOException;
 import java.util.*;
 
 public class MiningItemsets {
-    public void MiningItemsets(JavaSparkContext spark_context) throws IOException {
+    public static void MiningItemsets(JavaSparkContext spark_context) throws IOException {
         final long startTime = System.currentTimeMillis();
 
         /*colonna X ha Y valori

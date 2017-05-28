@@ -1,3 +1,5 @@
+package Varie;
+
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -8,16 +10,10 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 
-public class Main {
-
-    public static void main(String[] args) throws IOException {
-        final String data_path = Utils.path;
+public class ContaDischiFalliti {
+    public static void ContaDischiFalliti(JavaSparkContext spark_context,String path) throws IOException {
+        final String data_path = path;
         System.out.println("Data path: " + data_path);
-
-        JavaSparkContext spark_context = new JavaSparkContext(new SparkConf()
-                .setAppName("Spark Count")
-                .setMaster("local")
-        );
 
         JavaPairRDD<String, String> textFile = spark_context.wholeTextFiles(data_path + "Data", 5);
 

@@ -1,3 +1,5 @@
+import Varie.ContaDischiFalliti;
+import Varie.ValoriOgniColonna;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -108,5 +110,11 @@ public class Main {
         //endregion
 
 
+        //TrovaSoglie.TrovaSoglie(spark_context);
+        //MiningItemsets.MiningItemsets(spark_context);
+        //AndamentoItemsets.AndamentoItemsets(spark_context);
+        //ValoriOgniColonna.ValoriOgniColonna(spark_context,Utils.path);
+        //ValoriOgniColonna.ValoriOgniColonna(spark_context,Utils.path);
+        //ContaDischiFalliti.ContaDischiFalliti(spark_context,Utils.path);
     }
 }

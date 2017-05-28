@@ -14,7 +14,7 @@ import java.io.IOException;
 import java.util.*;
 
 public class AndamentoItemsets {
-    public void AndamentoItemsets(JavaSparkContext spark_context) throws IOException {
+    public static void AndamentoItemsets(JavaSparkContext spark_context) throws IOException {
         final String data_path = Utils.path;
         final int numberOfDays = 30;
 

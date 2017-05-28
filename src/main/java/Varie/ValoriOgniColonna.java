@@ -1,3 +1,5 @@
+package Varie;
+
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -6,16 +8,11 @@ import scala.Tuple2;
 import java.io.IOException;
 import java.util.*;
 
-public class Main {
-
-    public static void main(String[] args) throws IOException {
-        final String data_path = Utils.path;
+public class ValoriOgniColonna {
+    public static void ValoriOgniColonna(JavaSparkContext spark_context,String path)
+    {
+        final String data_path = path;
         System.out.println("Data path: " + data_path);
-
-        JavaSparkContext spark_context = new JavaSparkContext(new SparkConf()
-                .setAppName("Spark Count")
-                .setMaster("local")
-        );
 
         JavaPairRDD<String, String> textFile = spark_context.wholeTextFiles(data_path + "Data", 20);
 
@@ -86,101 +83,3 @@ public class Main {
         }
     }
 }
-
-OUTPUT: colonna X ha Y valori
-0,date,48612972
-1,serial_number,48612972
-2,model,48612972
-3,capacity_bytes,48612972
-4,failure,48612972
-5,smart_1_normalized,48612495
-6,smart_1_raw,48612495
-9,smart_3_normalized,48612495
-10,smart_3_raw,48612495
-11,smart_4_normalized,48612495
-12,smart_4_raw,48612495
-13,smart_5_normalized,48612495
-14,smart_5_raw,48612495
-15,smart_7_normalized,48612495
-16,smart_7_raw,48612495
-19,smart_9_normalized,48612495
-20,smart_9_raw,48612495
-21,smart_10_normalized,48612495
-22,smart_10_raw,48612495
-25,smart_12_normalized,48612495
-26,smart_12_raw,48612495
-57,smart_197_normalized,48612495
-58,smart_197_raw,48612495
-59,smart_198_normalized,48612495
-60,smart_198_raw,48612495
-61,smart_199_normalized,48612495
-62,smart_199_raw,48612495
-51,smart_194_normalized,48611881
-52,smart_194_raw,48611881
-47,smart_192_normalized,48094330
-48,smart_192_raw,48094330
-49,smart_193_normalized,47628884
-50,smart_193_raw,47628884
-45,smart_191_normalized,26652767
-46,smart_191_raw,26652767
-79,smart_240_normalized,26554258
-80,smart_240_raw,26554258
-43,smart_190_normalized,26398143
-44,smart_190_raw,26398143
-35,smart_184_normalized,26397696
-36,smart_184_raw,26397696
-37,smart_187_normalized,26397696
-38,smart_187_raw,26397696
-39,smart_188_normalized,26397696
-40,smart_188_raw,26397696
-41,smart_189_normalized,26396658
-42,smart_189_raw,26396658
-81,smart_241_normalized,26350538
-82,smart_241_raw,26350538
-83,smart_242_normalized,26350538
-84,smart_242_raw,26350538
-33,smart_183_normalized,24312350
-34,smart_183_raw,24312350
-55,smart_196_normalized,22215837
-56,smart_196_raw,22215837
-17,smart_8_normalized,20386735
-18,smart_8_raw,20386735
-7,smart_2_normalized,20386311
-8,smart_2_raw,20386311
-53,smart_195_normalized,4577551
-54,smart_195_raw,4577551
-23,smart_11_normalized,2294972
-24,smart_11_raw,2294972
-63,smart_200_normalized,2294972
-64,smart_200_raw,2294972
-71,smart_223_normalized,624936
-72,smart_223_raw,624936
-75,smart_225_normalized,465446
-76,smart_225_raw,465446
-67,smart_220_normalized,159490
-68,smart_220_raw,159490
-69,smart_222_normalized,159490
-70,smart_222_raw,159490
-73,smart_224_normalized,159490
-74,smart_224_raw,159490
-77,smart_226_normalized,159490
-78,smart_226_raw,159490
-91,smart_254_normalized,123827
-92,smart_254_raw,123827
-85,smart_250_normalized,40884
-86,smart_250_raw,40884
-87,smart_251_normalized,40884
-88,smart_251_raw,40884
-89,smart_252_normalized,40884
-90,smart_252_raw,40884
-31,smart_22_normalized,34873
-32,smart_22_raw,34873
-27,smart_13_normalized,424
-28,smart_13_raw,424
-65,smart_201_normalized,424
-66,smart_201_raw,424
-29,smart_15_normalized,0
-30,smart_15_raw,0
-93,smart_255_normalized,0
-94,smart_255_raw,0
-         */

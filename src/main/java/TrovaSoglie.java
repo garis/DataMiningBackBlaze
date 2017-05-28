@@ -18,7 +18,7 @@ import java.util.Collections;
 import java.util.List;
 
 public class TrovaSoglie {
-    public void TrovaSoglie(JavaSparkContext spark_context) throws IOException {
+    public static void TrovaSoglie(JavaSparkContext spark_context) throws IOException {
         final long startTime = System.currentTimeMillis();
         final String[] valuesAR = new String[]{"R_ERR", "SPIN-UP", "S&S", "REALLOC", "HOURS", "SPIN_ERR", "POWER-CYCL", "RETRACT", "LOAD&UNL", "UNST-SEC", "ABS-ERR"};
         final int[] columnIndex = new int[]{6, 10, 12, 14, 20, 22, 26, 48, 50, 58, 60};

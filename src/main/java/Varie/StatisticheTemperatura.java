@@ -1,3 +1,5 @@
+package Varie;
+
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -6,26 +8,12 @@ import scala.Tuple2;
 import java.io.IOException;
 import java.util.*;
 
-public class Main {
-
-    public static void main(String[] args) throws IOException {
-        final String data_path = Utils.path;
+public class StatisticheTemperatura {
+    public static void StatisticheTemperatura(JavaSparkContext spark_context,String path){
+        final String data_path = path;
         final int columnTemperature = 52;
 
         System.out.println("Data path: " + data_path);
-
-        JavaSparkContext spark_context = new JavaSparkContext(new SparkConf()
-                .setAppName("Spark Count")
-                .setMaster("local")
-        );
-
-        //fix filesystem errors when using java .jar execution
-        spark_context.hadoopConfiguration().set("fs.hdfs.impl",
-                org.apache.hadoop.hdfs.DistributedFileSystem.class.getName()
-        );
-        spark_context.hadoopConfiguration().set("fs.file.impl",
-                org.apache.hadoop.fs.LocalFileSystem.class.getName()
-        );
 
         JavaPairRDD<String, String> textFile = spark_context.wholeTextFiles(data_path + "Data", 10);
 
