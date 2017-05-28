@@ -110,6 +110,8 @@ public class Main {
         //endregion
 
 
+        //decomentare ciò che si vuole fare
+
         //TrovaSoglie.TrovaSoglie(spark_context);
         //MiningItemsets.MiningItemsets(spark_context);
         //AndamentoItemsets.AndamentoItemsets(spark_context);
