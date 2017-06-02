@@ -41,7 +41,7 @@ https://www.backblaze.com/blog/hard-drive-reliability-stats-q1-2016/
 
 **Some nice graphs from some poke around with Spark**
 
-Capacity and drive count in the 2016
+Capacity and drive count in the 2015,2016 and Q1 2017
 
 ![Capacity and drive count in the 2016](https://rawgit.com/garis/DataMiningBackBlaze/master/SpreadSheets/countAndcapacity_vs_days.svg)
 
