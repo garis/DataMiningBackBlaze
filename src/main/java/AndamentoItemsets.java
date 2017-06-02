@@ -14,10 +14,16 @@ import java.io.IOException;
 import java.util.*;
 
 public class AndamentoItemsets {
-    public static void AndamentoItemsets(JavaSparkContext spark_context) throws IOException {
-        final String data_path = Utils.path;
-        final int numberOfDays = 30;
 
+    /**
+     * Scrive in @param spark_context/andamentoIntemsets.csv basandosi sui valori, impostati a mano, di:
+     * valuesAR, lowerThreshold ,upperThreshold e columnIndex, calcolati con TrovaSoglie
+     * @param spark_context JavaSparkContext
+     * @param path dataset path as String
+     * @param numberOfDays quanti giorni pre-fallimento considerare per l'analisi
+     */
+    public static void AndamentoItemsets(JavaSparkContext spark_context,String path, int numberOfDays) throws IOException {
+        final String data_path = path;
         JavaPairRDD<String, String> textFile = spark_context.wholeTextFiles(data_path + "Data", 800);
 
         //estraiamo tutti i numeri seriali dei dischi rotti
@@ -123,7 +129,7 @@ public class AndamentoItemsets {
 
         //region DEBUG1
         //List<Tuple2<String, ArrayList<String>>> debug2 = res2.collect();
-        System.out.println("OK");
+        //System.out.println("OK");
         //endregion
 
         //filtra in modo che siano mantenuti solo i numero seriali con almeno numberOfDays record
@@ -294,7 +300,7 @@ public class AndamentoItemsets {
         }
 
         //scrive su file
-        //stare attenti che il csv è separato usando i punti e virgola e non le virgole
+        //N.B: che il csv è separato usando i punti e virgola e non le virgole
         String filename = data_path + "andamentoIntemsets.csv";
         File fileOutput = new File(filename);
         if (!fileOutput.exists()) {

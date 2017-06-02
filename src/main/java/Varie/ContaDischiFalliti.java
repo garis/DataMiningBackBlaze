@@ -1,6 +1,5 @@
 package Varie;
 
-import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import scala.Tuple2;
@@ -11,13 +10,19 @@ import java.io.FileWriter;
 import java.io.IOException;
 
 public class ContaDischiFalliti {
+
+    /**
+     * Scrive in @param spark_context/failureStat.csv il numero di dischi falliti in ogni giorno
+     * @param spark_context JavaSparkContext
+     * @param path dataset path as String
+     */
     public static void ContaDischiFalliti(JavaSparkContext spark_context,String path) throws IOException {
         final String data_path = path;
         System.out.println("Data path: " + data_path);
 
-        JavaPairRDD<String, String> textFile = spark_context.wholeTextFiles(data_path + "Data", 5);
+        JavaPairRDD<String, String> textFiles = spark_context.wholeTextFiles(data_path + "Data", 5);
 
-        JavaPairRDD<String, Integer> rows = textFile.mapToPair(file ->
+        JavaPairRDD<String, Integer> fallimentiAlGiorno = textFiles.mapToPair(file ->
         {
             String[] righe = file._2().split(String.format("%n"));
             int contatore = 0;
@@ -34,7 +39,7 @@ public class ContaDischiFalliti {
             return new Tuple2(data, contatore);
         });
 
-        java.util.Map<String, Integer> result = rows.collectAsMap();
+        java.util.Map<String, Integer> risultato = fallimentiAlGiorno.collectAsMap();
 
         String filename = data_path + "failureStat.csv";
         File file = new File(filename);
@@ -45,11 +50,11 @@ public class ContaDischiFalliti {
                 e.printStackTrace();
             }
         }
-        FileWriter fw = null;
-        fw = new FileWriter(file.getAbsoluteFile(), false);
+
+        FileWriter fw = new FileWriter(file.getAbsoluteFile(), false);
         BufferedWriter bw = new BufferedWriter(fw);
 
-        result.forEach((String key, Integer value) -> {
+        risultato.forEach((String key, Integer value) -> {
             try {
                 bw.write(key + "," + value + String.format("%n"));
             } catch (IOException e) {

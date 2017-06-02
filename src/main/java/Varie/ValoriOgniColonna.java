@@ -1,14 +1,18 @@
 package Varie;
 
-import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import scala.Tuple2;
 
-import java.io.IOException;
 import java.util.*;
 
 public class ValoriOgniColonna {
+
+    /**
+     * Restituisce in output il numero di valori non nulli e diversi da zero per ogni colonna
+     * @param spark_context JavaSparkContext
+     * @param path dataset path as String
+     */
     public static void ValoriOgniColonna(JavaSparkContext spark_context,String path)
     {
         final String data_path = path;
@@ -27,8 +31,9 @@ public class ValoriOgniColonna {
 
             for (int i = 1; i < righe.length; i++) {
                 String[] valori = righe[i].split(",");
-                //forget the last column: smart_255_raw
+                //non considera la colonna smart_255_raw
                 for (int j = 0; j < valori.length-1; j++) {
+                    //se il valore è non vuoto e maggiore di zero allora lo conta
                     if (valori[j].compareTo("") != 0) {
                         contatoreValori[j]++;
                     }
@@ -44,7 +49,7 @@ public class ValoriOgniColonna {
             }
             return vettoreA;
         });
-        //List<Tuple2<String, long[]>> fromMapReduceCollect=rddMapReduce.collect();
+
         Tuple2<String, long[]> colonneValuesCount = rddMapReduce.collect().get(0);
 
         ArrayList<Tuple2<String, Long>> output = new ArrayList<Tuple2<String, Long>>();

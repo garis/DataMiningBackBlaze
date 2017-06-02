@@ -1,4 +1,5 @@
 import Varie.ContaDischiFalliti;
+import Varie.Statistiche;
 import Varie.ValoriOgniColonna;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
@@ -112,11 +113,11 @@ public class Main {
 
         //decomentare ciò che si vuole fare
 
-        //TrovaSoglie.TrovaSoglie(spark_context);
-        //MiningItemsets.MiningItemsets(spark_context);
-        //AndamentoItemsets.AndamentoItemsets(spark_context);
+        //TrovaSoglie.TrovaSoglie(spark_context,Utils.path);
+        MiningItemsets.MiningItemsets(spark_context,Utils.path);
+        //AndamentoItemsets.AndamentoItemsets(spark_context,Utils.path,30);
         //ValoriOgniColonna.ValoriOgniColonna(spark_context,Utils.path);
-        //ValoriOgniColonna.ValoriOgniColonna(spark_context,Utils.path);
+        //Statistiche.StatisticheTemperatura(spark_context,Utils.path);
         //ContaDischiFalliti.ContaDischiFalliti(spark_context,Utils.path);
     }
 }

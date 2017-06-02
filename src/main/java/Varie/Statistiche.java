@@ -1,23 +1,29 @@
 package Varie;
 
-import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import scala.Tuple2;
 
-import java.io.IOException;
 import java.util.*;
 
-public class StatisticheTemperatura {
+public class Statistiche {
+
+    /**
+     * Restituisce in output delle statistiche di interesse per ogni giorno
+     * le statistiche sono: temperatura media, minima, massima, dev. std. della tempartura, drive count e capacità totale
+     * @param spark_context JavaSparkContext
+     * @param path dataset path as String
+     */
     public static void StatisticheTemperatura(JavaSparkContext spark_context,String path){
         final String data_path = path;
+
+        //indice di colonna contante il valore SMART che indica la temperatura
         final int columnTemperature = 52;
 
-        System.out.println("Data path: " + data_path);
+        JavaPairRDD<String, String> textFiles = spark_context.wholeTextFiles(data_path + "Data", 10);
 
-        JavaPairRDD<String, String> textFile = spark_context.wholeTextFiles(data_path + "Data", 10);
-
-        JavaPairRDD<String, ArrayList<Double>> temperature = textFile.mapToPair(fileDisco ->
+        //di ogni giorno raccoglie tutte le temperature
+        JavaPairRDD<String, ArrayList<Double>> temperature = textFiles.mapToPair(fileDisco ->
         {
             String[] tempKey = fileDisco._1().split("/");
             tempKey[0] = tempKey[tempKey.length - 1];//reuse the value at 0 as name
@@ -27,7 +33,8 @@ public class StatisticheTemperatura {
                 if (!giorno.contains("date")) {
                     try {
                         dischi.add(Double.parseDouble(giorno.split(",")[columnTemperature]));
-                    } catch (Exception ex) {//sometimes the temperature is missing :(
+                    } catch (Exception ex) {
+                        //se avviene un errore nel leggere la temperatua inserisce un valore di default a 25
                         dischi.add(25D);
                     }
                 }
@@ -35,6 +42,7 @@ public class StatisticheTemperatura {
             return new Tuple2(tempKey[0], dischi);
         });
 
+        //di ogni giorno ritorna la media e la dev. std.
         JavaPairRDD<String, ArrayList<Double>> result = temperature.mapToPair((Tuple2<String, ArrayList<Double>> temperatureGiornata) ->
         {
             double mean = 0;
@@ -57,9 +65,9 @@ public class StatisticheTemperatura {
             return new Tuple2<String, ArrayList<Double>>(temperatureGiornata._1(), valori);
         });
 
-        //now tempMin, TempMax, Count drive, total capacity
         JavaPairRDD<String, String> textFile2 = spark_context.wholeTextFiles(data_path + "Data", 10);
 
+        //ora calcola per ogni giorno la temperature minima, massima, il numero di drive e la capacità totale
         JavaPairRDD<String, ArrayList<Double>> stats = textFile2.mapToPair(fileDisco ->
         {
             String[] tempKey = fileDisco._1().split("/");
@@ -94,8 +102,9 @@ public class StatisticheTemperatura {
             return new Tuple2(tempKey[0], dati);
         });
 
-        List<Tuple2<String,ArrayList<Double>>> risultato=stats.collect();
+        //e ora fornisce in output i risultati
 
+        List<Tuple2<String,ArrayList<Double>>> risultato=stats.collect();
 
         JavaPairRDD<String, String> output = result.mapToPair((Tuple2<String, ArrayList<Double>> valori) ->
                 new Tuple2<String, String>("0", valori._1() +
@@ -106,7 +115,7 @@ public class StatisticheTemperatura {
         List<Tuple2<String,String>> temps=  output.reduceByKey((String StrA, String StrB) -> {
                     return StrA + String.format("%n") + StrB;
                 }
-        ).collect();// .foreach((Tuple2<String, String> allInOne) -> System.out.print(allInOne._2()));
+        ).collect();
 
         System.out.println("TEMPS");
         for(Tuple2<String,String> tupla: temps)

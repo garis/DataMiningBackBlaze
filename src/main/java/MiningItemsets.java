@@ -1,14 +1,10 @@
-import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.PairFlatMapFunction;
-import org.apache.spark.mllib.fpm.AssociationRules;
 import org.apache.spark.mllib.fpm.FPGrowth;
 import org.apache.spark.mllib.fpm.FPGrowthModel;
 import scala.Tuple2;
 
-import javax.xml.bind.SchemaOutputResolver;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -16,10 +12,17 @@ import java.io.IOException;
 import java.util.*;
 
 public class MiningItemsets {
-    public static void MiningItemsets(JavaSparkContext spark_context) throws IOException {
+
+    /**
+     * Fa il mining degli itemsets basandosi sui valori, impostati a mano, di:
+     * valuesAR, lowerThreshold ,upperThreshold e columnIndex, calcolati con TrovaSoglie
+     * @param spark_context JavaSparkContext
+     * @param path dataset path as String
+     */
+    public static void MiningItemsets(JavaSparkContext spark_context,String path) throws IOException {
         final long startTime = System.currentTimeMillis();
 
-        /*colonna X ha Y valori
+        /*colonne con più elementi (colonna X ha Y valori):
 0,date,48612972
 1,serial_number,48612972
 2,model,48612972
@@ -72,7 +75,6 @@ ignoriamo valori normalizzati, date, SN, modello e capacità. Rimaniamo con:
 50,smart_193_raw,47628884   LOAD&UNL:   Count of load/unload cycles into head landing zone position
          */
 
-
         //dati estratti usando il codice in TrovaSoglie.java
         final String[] valuesAR = new String[]{"R_ERR_0",		"R_ERR_1",		"R_ERR_2",		"R_ERR_3",		"R_ERR_4",		"SPIN-UP_0",		"SPIN-UP_1",		"SPIN-UP_2",		"SPIN-UP_3",		"SPIN-UP_4",		"S&S_0",		"S&S_1",		"S&S_2",		"S&S_3",		"S&S_4",		"REALLOC_0",		"REALLOC_1",		"REALLOC_2",		"REALLOC_3",		"REALLOC_4",		"HOURS_0",		"HOURS_1",		"HOURS_2",		"HOURS_3",		"HOURS_4",		"SPIN_ERR_0",		"SPIN_ERR_1",		"SPIN_ERR_2",		"SPIN_ERR_3",		"SPIN_ERR_4",		"POWER-CYCL_0",		"POWER-CYCL_1",		"POWER-CYCL_2",		"POWER-CYCL_3",		"POWER-CYCL_4",		"RETRACT_0",		"RETRACT_1",		"RETRACT_2",		"RETRACT_3",		"RETRACT_4",		"LOAD&UNL_0",		"LOAD&UNL_1",		"LOAD&UNL_2",		"LOAD&UNL_3",		"LOAD&UNL_4",		"UNST-SEC_0",		"UNST-SEC_1",		"UNST-SEC_2",		"UNST-SEC_3",		"UNST-SEC_4",		"ABS-ERR_0",		"ABS-ERR_1",		"ABS-ERR_2",		"ABS-ERR_3",		"ABS-ERR_4"};
         final double[] lowerThreshold = new double[]{1,		111631401,		665349234,		2161913152L,		3523312379L,		1,		2077,		4248,		5664,		7568,		1,		28,		80,		572,		9401,		1,		1676,		8583,		24423,		48796,		1,		7452,		16354,		26375,		39619,		1,		4,		131078,		262150,		327685,		1,		17,		51,		174,		663,		1,		646,		6710,		22851,		49391,		1,		134124,		718022,		2911961,		5225821,		1,		670,		3980,		11585,		30764,		1,		1542,		6482,		11906,		29444};
@@ -80,10 +82,11 @@ ignoriamo valori normalizzati, date, SN, modello e capacità. Rimaniamo con:
         final int[] columnIndex = new int[]{6,		6,		6,		6,		6,		10,		10,		10,		10,		10,		12,		12,		12,		12,		12,		14,		14,		14,		14,		14,		20,		20,		20,		20,		20,		22,		22,		22,		22,		22,		26,		26,		26,		26,		26,		48,		48,		48,		48,		48,		50,		50,		50,		50,		50,		58,		58,		58,		58,		58,		60,		60,		60,		60,		60};
 
         double TOTALE_DISCHI_ROTTI=0,TOTALE_DISCHI_SANI=0;
+
         //FOR DEBUG
         //System.out.println(valuesAR.length + " " + lowerThreshold.length + " " + upperThreshold.length + " " + columnIndex.length);
 
-        final String data_path = Utils.path;
+        final String data_path = path;
 
         System.out.println("Data path: " + data_path);
 

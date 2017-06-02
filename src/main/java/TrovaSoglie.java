@@ -18,22 +18,23 @@ import java.util.Collections;
 import java.util.List;
 
 public class TrovaSoglie {
-    public static void TrovaSoglie(JavaSparkContext spark_context) throws IOException {
+
+    /**
+     * fornisce in output i valori di: valuesAR, lowerThreshold ,upperThreshold e columnIndex
+     * @param spark_context JavaSparkContext
+     * @param path dataset path as String
+     */
+    public static void TrovaSoglie(JavaSparkContext spark_context,String path) throws IOException {
         final long startTime = System.currentTimeMillis();
         final String[] valuesAR = new String[]{"R_ERR", "SPIN-UP", "S&S", "REALLOC", "HOURS", "SPIN_ERR", "POWER-CYCL", "RETRACT", "LOAD&UNL", "UNST-SEC", "ABS-ERR"};
         final int[] columnIndex = new int[]{6, 10, 12, 14, 20, 22, 26, 48, 50, 58, 60};
-        final String data_path = Utils.path;
-
-        System.out.println("Data path: " + data_path);
-
-        //now we want all failed disks on on file
-        //if the file doesn't exist (or it is the first run of the code) make a new one
+        final String data_path = path;
 
         String filename = data_path + "failedDisks.csv";
         File fileOutput = new File(filename);
 
         //failed disks
-        // Cluster the data into two classes using KMeans
+        // clusterizza effetuando un cluster di cluster come descritto nel report
         int NUMBERCLUSTER = 5;
         int numIterations = 20;
         long[][] centriInt = new long[columnIndex.length][NUMBERCLUSTER];
@@ -41,7 +42,6 @@ public class TrovaSoglie {
         for (int i = 0; i < columnIndex.length; i++) {
             final int INDICECOLONNA = columnIndex[i];
 
-            //same thing as above
             JavaRDD<String> data = spark_context.textFile(data_path + "failedDisks.csv", 1);
 
             JavaRDD<Vector> parsedData = data.map(riga ->
@@ -75,7 +75,6 @@ public class TrovaSoglie {
 
             KMeansModel clusters2 = KMeans.train(parsedData2.rdd(), NUMBERCLUSTER, numIterations);
 
-
             int o = 0;
             for (Vector center : clusters2.clusterCenters())
                 centriInt[i][o++] = Math.round(center.toArray()[0]);
@@ -97,10 +96,8 @@ public class TrovaSoglie {
             System.out.print("\n");
         }
 
-        //Printing strings (kinda) ready to be copy-pasted, just delete the last comma
-        //WARNING: F'ing gross & messy, like, Filthy Frank's hair cake gross.
-        //Names
-        final int mode = -1; //Change -1 to 0 to remove the first threshold (from 0 to x)
+        //codice per stamapre le stringhe in modo quasi pronto per un copia e incolla nel codice di MiningItemsets e AndamentoItemsets
+        final int mode = -1;
         final String finalString = "Double.MAX_VALUE";
         System.out.print("{");
         for (int i = 0; i < columnIndex.length; i++) {
